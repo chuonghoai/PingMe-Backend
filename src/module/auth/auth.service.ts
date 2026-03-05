@@ -23,7 +23,7 @@ export class AuthService {
   async login(loginDto: Record<string, any>): Promise<ApiResponse<any>> {
     const { email, password, rememberMe } = loginDto;
 
-    // Bước 3: Find user by email (Mockup DB)
+    // Find user by email
     const user = {
       id: 'uuid-1234',
       email: 'test@example.com',
@@ -41,7 +41,7 @@ export class AuthService {
       );
     }
 
-    // Bước 4: Check Account Status
+    // Check Account Status
     if (user.status === 'PENDING_VERIFICATION') {
       throw new CustomException(
         HttpStatus.FORBIDDEN,
@@ -57,9 +57,8 @@ export class AuthService {
       );
     }
 
-    // Bước 5: Verify Password
+    // Verify Password
     const isMatch = true;
-
     if (!isMatch) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
@@ -68,7 +67,7 @@ export class AuthService {
       );
     }
 
-    // Bước 6: Generate Tokens
+    // Generate Tokens
     const payload = {
       userId: user.id,
       email: user.email,
@@ -77,21 +76,17 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const refreshTokenExpiresIn = rememberMe ? '360d' : '1d';
-
-    // SỬ DỤNG CONSTANTS ĐỂ LẤY BIẾN MÔI TRƯỜNG
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
       expiresIn: refreshTokenExpiresIn,
     });
 
-    // Bước 7: Trả về kết quả
     return new ApiResponse(true, 'Đăng nhập thành công', {
       accessToken,
       refreshToken,
       user: {
         userId: user.id,
         email: user.email,
-        username: user.username,
         status: user.status,
       },
     });
@@ -110,12 +105,10 @@ export class AuthService {
     }
 
     try {
-      // Bước 1: Xác thực JWT của Refresh Token
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
       });
 
-      // Bước 2: Tạo Access Token mới
       const newPayload = {
         userId: payload.userId,
         email: payload.email,
@@ -123,7 +116,6 @@ export class AuthService {
       };
       const newAccessToken = this.jwtService.sign(newPayload);
 
-      // Bước 3: Trả về kết quả
       return new ApiResponse(true, 'Làm mới token thành công', {
         accessToken: newAccessToken,
       });

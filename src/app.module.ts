@@ -5,6 +5,7 @@ import { UsersModule } from './module/users/users.module';
 import { AuthModule } from './module/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { CustomThrottlerGuard } from './core/security/throttler/custom-throttler.guard';
+import { MediaModule } from './module/media/media.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CustomThrottlerGuard } from './core/security/throttler/custom-throttler
 
     UsersModule,
     AuthModule,
+    MediaModule,
   ],
   controllers: [],
   providers: [
