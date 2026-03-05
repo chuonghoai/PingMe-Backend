@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/require-await */
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Throttle } from '@nestjs/throttler';
+import { RegisterDto, AddProfileDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // API: Login
-  // Request: email, password, rememberMe
   @Throttle({ default: { limit: 1, ttl: 1000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -17,10 +19,23 @@ export class AuthController {
   }
 
   // API: Refresh Token
-  // Request: Refresh token
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() body: Record<string, any>) {
     return this.authService.refreshToken(body);
+  }
+
+  // API: Register
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
+  }
+
+  // API: Add Profile
+  @Post('add-profile')
+  @HttpCode(HttpStatus.OK)
+  async addProfile(@Body() addProfileDto: AddProfileDto) {
+    return this.authService.addProfile(addProfileDto);
   }
 }
