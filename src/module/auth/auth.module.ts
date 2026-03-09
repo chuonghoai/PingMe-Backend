@@ -8,9 +8,16 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../../core/security/jwt/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { ENV_VARS } from 'src/constants/env.constants';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from '../users/entities/user.entity';
+import { EmailModule } from '../email/email.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([User]), 
+    EmailModule,
+    UsersModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

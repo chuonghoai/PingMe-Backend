@@ -1,5 +1,6 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 import { EUserGender, EUserRole, EUserStatus } from '../enums/user.enum';
 
 @Entity('users')
@@ -7,7 +8,7 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ nullable: true })
   fullname: string;
 
   @Column({ unique: true })
@@ -16,10 +17,10 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @Column()
+  @Column({ nullable: true })
   phone: string;
 
-  @Column()
+  @Column({ nullable: true })
   avatarUrl: string;
 
   @Column({ type: 'enum', enum: EUserStatus, default: EUserStatus.PENDING })
@@ -28,18 +29,18 @@ export class User {
   @Column({ type: 'enum', enum: EUserGender, nullable: true })
   gender: EUserGender;
 
-  @Column()
+  @Column({ nullable: true })
   dob: Date;
 
   @Column({ type: 'enum', enum: EUserRole, default: EUserRole.CLIENT })
   role: EUserRole;
 
-  @Column()
+  @CreateDateColumn()
   joinAt: Date;
 
-  @Column()
+  @Column({ nullable: true })
   lastActiveAt: Date;
 
-  @Column()
+  @Column({ default: false })
   isOnline: boolean;
 }

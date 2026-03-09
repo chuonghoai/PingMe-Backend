@@ -13,13 +13,20 @@ import { CustomException } from '../../core/exceptions/custom.exception';
 import { ENV_VARS } from '../../constants/env.constants';
 import { AddProfileDto, RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { EmailRepository } from '../email/email.repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { EUserGender, EUserStatus } from '../users/enums/user.enum';
+import { UserRepository } from '../users/users.repository';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
-    // private usersService: UsersService,
+    private userRepository: UserRepository,
+    private emailRepository: EmailRepository,
   ) {}
 
   // LOGIN
@@ -136,14 +143,13 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<ApiResponse<any>> {
     const { email, otp, password } = registerDto;
 
-    const isEmailExists = false;
-    if (isEmailExists) {
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) {
       throw new CustomException(HttpStatus.CONFLICT, 'EMAIL_EXISTS', 'Email đã được sử dụng');
     }
 
-    const isValidOtp = true;
-    const isExpired = false;
-    if (!isValidOtp || isExpired) {
+    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
       throw new CustomException(
         HttpStatus.BAD_REQUEST,
         'INVALID_OTP',
@@ -153,7 +159,15 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = { id: 'uuid-1234', email, status: 'PENDING' };
+    const newUser = this.userRepository.create({
+      email: email,
+      password: hashedPassword,
+      status: EUserStatus.PENDING,
+    });
+    const savedUser = await this.userRepository.save(newUser);
+
+    latestOtp.isUsed = true;
+    await this.emailRepository.save(latestOtp);
 
     return new ApiResponse(
       true, 
@@ -166,13 +180,28 @@ export class AuthService {
     );
   }
 
+  // Add profile
   async addProfile(addProfileDto: AddProfileDto): Promise<ApiResponse<any>> {
     const { email, fullname, phone, gender, dob } = addProfileDto;
 
-    // TODO: Tìm user trong DB bằng "email"
-    // TODO: Cập nhật fullname, phone, gender, dob
-    // TODO: Cập nhật status của user thành 'ACTIVE'
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy tài khoản');
+    }
+    if (user.status === EUserStatus.ACTIVE) {
+      throw new CustomException(HttpStatus.BAD_REQUEST, 'ALREADY_ACTIVE', 'Tài khoản này đã hoàn tất hồ sơ từ trước');
+    }
+
+    user.fullname = fullname;
+    user.phone = phone;
+    user.gender = gender;
+    user.dob = new Date(dob);
+    const encodedName = encodeURIComponent(fullname);
+    user.avatarUrl = `https://ui-avatars.com/api/?name=${encodedName}&background=random&color=fff&size=256&bold=true`;
     
+    user.status = EUserStatus.ACTIVE;
+
+    await this.userRepository.save(user);
     return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
   }
 }
