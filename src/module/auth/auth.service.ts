@@ -19,6 +19,7 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { EUserGender, EUserStatus } from '../users/enums/user.enum';
 import { UserRepository } from '../users/users.repository';
+import { UserToken } from './entities/user-token.entity';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private configService: ConfigService,
     private userRepository: UserRepository,
     private emailRepository: EmailRepository,
+    @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
   ) {}
 
   // LOGIN
@@ -82,10 +84,22 @@ export class AuthService {
     };
     const accessToken = this.jwtService.sign(payload);
 
+    // Refrest Tokens
     const refreshTokenExpiresIn = rememberMe ? '360d' : '1d';
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
       expiresIn: refreshTokenExpiresIn,
+    });
+
+    // Save Refresh tokens in db
+    const days = rememberMe ? 360 : 1;
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+    await this.userTokenRepository.save({
+      userId: user.id,
+      refreshToken: refreshToken,
+      expiresAt: expiresAt,
+      isRevoked: false,
     });
 
     return new ApiResponse(true, 'Đăng nhập thành công', {
@@ -116,6 +130,15 @@ export class AuthService {
         secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
       });
 
+      // Check refresh token
+      const tokenRecord = await this.userTokenRepository.findOne({ 
+        where: { refreshToken: refreshToken } 
+      });
+      if (!tokenRecord || tokenRecord.isRevoked) {
+        throw new CustomException(HttpStatus.UNAUTHORIZED, 'TOKEN_REVOKED', 'Phiên đăng nhập không hợp lệ');
+      }
+
+      // Check user account
       const user = await this.userRepository.findById(payload.userId);
 
       if (!user) {
@@ -134,16 +157,26 @@ export class AuthService {
         );
       }
 
-      const newPayload = {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      };
-      
+      // Generate new access tokens and refresh tokens
+      const newPayload = { userId: user.id, email: user.email, role: user.role };
       const newAccessToken = this.jwtService.sign(newPayload);
+      const newRefreshToken = this.jwtService.sign(newPayload, {
+        secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
+        expiresIn: '360d',
+      });
+
+      // Revoked old token and save new tokens
+      tokenRecord.isRevoked = true;
+      await this.userTokenRepository.save(tokenRecord);
+      await this.userTokenRepository.save({
+        userId: user.id,
+        refreshToken: newRefreshToken,
+        expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000),
+      });
 
       return new ApiResponse(true, 'Làm mới token thành công', {
         accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
       });
       
     } catch (error) {
@@ -219,5 +252,23 @@ export class AuthService {
 
     await this.userRepository.save(user);
     return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
+  }
+
+  // Logout
+  async logout(refreshToken: string): Promise<ApiResponse<any>> {
+    try {
+      // revoke old refresh token in db
+      if (refreshToken) {
+        const tokenRecord = await this.userTokenRepository.findOne({ where: { refreshToken } });
+        if (tokenRecord) {
+          tokenRecord.isRevoked = true;
+          await this.userTokenRepository.save(tokenRecord);
+        }
+      }
+
+      return new ApiResponse(true, 'Đăng xuất thành công', null);
+    } catch (error) {
+      throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'LOGOUT_FAILED', 'Đã xảy ra lỗi khi đăng xuất');
+    }
   }
 }

@@ -12,10 +12,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { EmailModule } from '../email/email.module';
 import { UsersModule } from '../users/users.module';
+import { UserToken } from './entities/user-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]), 
+    TypeOrmModule.forFeature([User, UserToken]), 
     EmailModule,
     UsersModule,
     PassportModule,

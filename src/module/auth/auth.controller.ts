@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/require-await */
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Headers,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Throttle } from '@nestjs/throttler';
 import { RegisterDto, AddProfileDto } from './dto/register.dto';
+import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -37,5 +46,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async addProfile(@Body() addProfileDto: AddProfileDto) {
     return this.authService.addProfile(addProfileDto);
+  }
+
+  // API: Logout
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body('refreshToken') refreshToken: string) {
+    return this.authService.logout(refreshToken);
   }
 }
