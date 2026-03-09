@@ -3,10 +3,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UsersModule } from './module/users/users.module';
 import { AuthModule } from './module/auth/auth.module';
-import { ConfigModule } from '@nestjs/config';
 import { CustomThrottlerGuard } from './core/security/throttler/custom-throttler.guard';
 import { MediaModule } from './module/media/media.module';
 import { EmailModule } from './module/email/email.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
@@ -20,6 +21,20 @@ import { EmailModule } from './module/email/email.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'mysql',
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASS'),
+        database: config.get<string>('DB_NAME'),
+        autoLoadEntities: true,
+        synchronize: true,
+      }),
     }),
 
     UsersModule,

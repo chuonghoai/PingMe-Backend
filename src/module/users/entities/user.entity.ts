@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { EUserGender, EUserRole, EUserStatus } from '../enums/user.enum';
 
 @Entity('users')
 export class User {
@@ -21,14 +22,17 @@ export class User {
   @Column()
   avatarUrl: string;
 
-  @Column()
-  gender: string;
+  @Column({ type: 'enum', enum: EUserStatus, default: EUserStatus.PENDING })
+  status: EUserStatus;
+
+  @Column({ type: 'enum', enum: EUserGender, nullable: true })
+  gender: EUserGender;
 
   @Column()
   dob: Date;
 
-  @Column()
-  role: string;
+  @Column({ type: 'enum', enum: EUserRole, default: EUserRole.CLIENT })
+  role: EUserRole;
 
   @Column()
   joinAt: Date;

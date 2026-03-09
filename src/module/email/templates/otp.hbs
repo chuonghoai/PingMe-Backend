@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    .container { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff; }
+    .header { text-align: center; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
+    .header h1 { color: #4A90E2; margin: 0; font-size: 28px; }
+    .content { padding: 20px 0; color: #333333; line-height: 1.6; }
+    .otp-box { text-align: center; margin: 30px 0; }
+    .otp-code { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #4A90E2; background-color: #f4f8ff; padding: 15px 20px; border-radius: 8px; display: inline-block; border: 1px dashed #4A90E2; }
+    .footer { text-align: center; font-size: 13px; color: #888888; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>PingMe</h1>
+    </div>
+    
+    <div class="content">
+      <p>Xin chào <b>{{email}}</b>,</p>
+      
+      <p>Bạn vừa yêu cầu một mã xác thực (OTP) để đăng ký tài khoản trên ứng dụng PingMe. Vui lòng sử dụng mã dưới đây để hoàn tất quá trình:</p>
+      
+      <div class="otp-box">
+        <span class="otp-code">{{otp}}</span>
+      </div>
+      
+      <p><i>Lưu ý: Mã này chỉ có hiệu lực trong vòng 10 phút. Tuyệt đối không chia sẻ mã này cho bất kỳ ai để bảo vệ tài khoản của bạn.</i></p>
+    </div>
+    
+    <div class="footer">
+      <p>Trân trọng,</p>
+      <p><b>Đội ngũ PingMe</b></p>
+    </div>
+  </div>
+</body>
+</html>
