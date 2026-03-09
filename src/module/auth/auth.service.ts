@@ -107,7 +107,7 @@ export class AuthService {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_REFRESH_TOKEN',
-        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại',
+        'Vui lòng cung cấp Refresh Token',
       );
     }
 
@@ -116,16 +116,36 @@ export class AuthService {
         secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
       });
 
+      const user = await this.userRepository.findById(payload.userId);
+
+      if (!user) {
+        throw new CustomException(
+          HttpStatus.UNAUTHORIZED,
+          'USER_NOT_FOUND',
+          'Tài khoản không tồn tại',
+        );
+      }
+
+      if (user.status === EUserStatus.LOCKED) {
+        throw new CustomException(
+          HttpStatus.FORBIDDEN,
+          'ACCOUNT_LOCKED',
+          'Tài khoản đã bị khóa.',
+        );
+      }
+
       const newPayload = {
-        userId: payload.userId,
-        email: payload.email,
-        role: payload.role,
+        userId: user.id,
+        email: user.email,
+        role: user.role,
       };
+      
       const newAccessToken = this.jwtService.sign(newPayload);
 
       return new ApiResponse(true, 'Làm mới token thành công', {
         accessToken: newAccessToken,
       });
+      
     } catch (error) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,

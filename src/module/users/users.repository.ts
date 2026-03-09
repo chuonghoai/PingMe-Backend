@@ -13,4 +13,10 @@ export class UserRepository extends Repository<User> {
       where: { email: email },
     });
   }
+
+  async findById(userId: string): Promise<User | null> {
+    return this.findOne({
+      where: { id: userId },
+    });
+  }
 }
