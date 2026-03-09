@@ -30,21 +30,17 @@ export class AuthService {
   ) {}
 
   // LOGIN
-  // Token contain: userId, email, username
+  // Token contain: userId, email, role
   async login(loginDto: Record<string, any>): Promise<ApiResponse<any>> {
     const { email, password, rememberMe } = loginDto;
 
     // Find user by email
-    const user = {
-      id: 'uuid-1234',
-      email: 'test@example.com',
-      username: 'testuser',
-      password: 'hashed_password_here',
-      status: 'LOCKED',
-      failed_attempts: 0,
-    };
+    const user = await this.userRepository.createQueryBuilder('user')
+                                          .where('user.email = :email', { email })
+                                          .addSelect('user.password')
+                                          .getOne();
 
-    if (!user || user.email !== email) {
+    if (!user) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_CREDENTIALS',
@@ -53,14 +49,14 @@ export class AuthService {
     }
 
     // Check Account Status
-    if (user.status === 'PENDING') {
+    if (user.status === EUserStatus.PENDING) {
       throw new CustomException(
         HttpStatus.FORBIDDEN,
         'ACCOUNT_NOT_VERIFIED',
         'Tài khoản chưa hoàn thành đăng ký',
       );
     }
-    if (user.status === 'LOCKED') {
+    if (user.status === EUserStatus.LOCKED) {
       throw new CustomException(
         HttpStatus.LOCKED,
         'ACCOUNT_LOCKED',
@@ -69,7 +65,7 @@ export class AuthService {
     }
 
     // Verify Password
-    const isMatch = true;
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
@@ -82,7 +78,7 @@ export class AuthService {
     const payload = {
       userId: user.id,
       email: user.email,
-      username: user.username,
+      role: user.role,
     };
     const accessToken = this.jwtService.sign(payload);
 
@@ -123,7 +119,7 @@ export class AuthService {
       const newPayload = {
         userId: payload.userId,
         email: payload.email,
-        username: payload.username,
+        role: payload.role,
       };
       const newAccessToken = this.jwtService.sign(newPayload);
 
