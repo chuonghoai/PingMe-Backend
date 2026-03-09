@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { EmailService } from './email.service';
-import { SendOtpDto } from '../auth/dto/register.dto';
+import { SendOtpDto } from './dto/otp.dto';
 import { Throttle } from '@nestjs/throttler';
 
 @Controller('email')

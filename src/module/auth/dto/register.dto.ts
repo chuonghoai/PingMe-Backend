@@ -13,11 +13,6 @@ export class RegisterDto {
   password: string;
 }
 
-export class SendOtpDto {
-  @IsEmail({}, { message: 'Email không hợp lệ' })
-  email: string;
-}
-
 export class AddProfileDto {
   @IsNotEmpty({ message: 'Vui lòng cung cấp email' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
