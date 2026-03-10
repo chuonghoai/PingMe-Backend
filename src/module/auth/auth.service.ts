@@ -1,10 +1,10 @@
 import { EmailService } from './../email/email.service';
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/require-await */
+ 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
