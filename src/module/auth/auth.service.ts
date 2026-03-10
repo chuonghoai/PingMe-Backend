@@ -1,3 +1,4 @@
+import { EmailService } from './../email/email.service';
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
@@ -20,6 +21,7 @@ import { User } from '../users/entities/user.entity';
 import { EUserGender, EUserStatus } from '../users/enums/user.enum';
 import { UserRepository } from '../users/users.repository';
 import { UserToken } from './entities/user-token.entity';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +31,7 @@ export class AuthService {
     private userRepository: UserRepository,
     private emailRepository: EmailRepository,
     @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
+    private emailService: EmailService,
   ) {}
 
   // LOGIN
@@ -270,5 +273,54 @@ export class AuthService {
     } catch (error) {
       throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'LOGOUT_FAILED', 'Đã xảy ra lỗi khi đăng xuất');
     }
+  }
+
+  // Forgot password
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<ApiResponse<any>> {
+    const { email } = forgotPasswordDto;
+    const user = await this.userRepository.findByEmail(email);
+    if (user) {
+      await this.emailService.sendOtp(email, 'Mã khôi phục mật khẩu - PingMe');
+    }
+
+    return new ApiResponse(
+      true,
+      'Mã xác thực đã được gửi đi',
+      null
+    );
+  }
+
+  // Reset password
+  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<ApiResponse<any>> {
+    const { email, otp, newPassword } = resetPasswordDto;
+
+    // Check user
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_REQUEST', 'Yêu cầu không hợp lệ');
+    }
+
+    // Check OTP
+    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
+      throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_OTP', 'Mã OTP không hợp lệ hoặc đã hết hạn');
+    }
+
+    // Reset password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await this.userRepository.save(user);
+
+    // Revoked OTP
+    latestOtp.isUsed = true;
+    await this.emailRepository.save(latestOtp);
+
+    // Refresh all token
+    await this.userTokenRepository.update(
+      { userId: user.id },
+      { isRevoked: true }
+    );
+
+    return new ApiResponse(true, 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.', null);
   }
 }

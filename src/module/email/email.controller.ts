@@ -12,6 +12,6 @@ export class EmailController {
   @Post('otp')
   @HttpCode(HttpStatus.OK)
   async sendOtp(@Body() body: SendOtpDto) {
-    return this.emailService.sendOtp(body.email);
+    return this.emailService.sendOtp(body.email, 'Mã xác thực OTP - PingMe');
   }
 }

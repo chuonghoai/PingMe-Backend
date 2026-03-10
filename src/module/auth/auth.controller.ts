@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/require-await */
 import {
@@ -14,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { Throttle } from '@nestjs/throttler';
 import { RegisterDto, AddProfileDto } from './dto/register.dto';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,5 +56,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Body('refreshToken') refreshToken: string) {
     return this.authService.logout(refreshToken);
+  }
+
+  // API: Forgot password
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  // API: Reset Password
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }

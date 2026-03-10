@@ -13,7 +13,7 @@ export class EmailService {
     private readonly emailRepository: EmailRepository,
   ) {}
 
-  async sendOtp(email: string): Promise<ApiResponse<any>> {
+  async sendOtp(email: string, subject: string): Promise<ApiResponse<any>> {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expirationTime = new Date(Date.now() + 10 * 60000);
 
@@ -22,7 +22,7 @@ export class EmailService {
     try {
       await this.mailerService.sendMail({
         to: email,
-        subject: 'Mã xác thực OTP - PingMe',
+        subject: subject,
         template: './otp',
         context: {
           email: email, 
