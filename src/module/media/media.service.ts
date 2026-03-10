@@ -89,7 +89,7 @@ export class MediaService {
         resource_type: dto.resource_type, 
       });
 
-      return new ApiResponse(true, 'Lưu thông tin media thành công', null);
+      return new ApiResponse(true, 'Lưu thông tin media thành công', newMedia);
     } catch (error) {
       throw new CustomException(
         HttpStatus.INTERNAL_SERVER_ERROR,
