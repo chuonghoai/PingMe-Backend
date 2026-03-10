@@ -285,7 +285,7 @@ export class AuthService {
 
     return new ApiResponse(
       true,
-      'Mã xác thực đã được gửi đi',
+      'Mã khôi phục mật khẩu đã được gửi đi',
       null
     );
   }

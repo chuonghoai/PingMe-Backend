@@ -1,26 +1,26 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/require-await */
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
+import { UserRepository } from './users.repository';
+import { CustomException } from 'src/core/exceptions/custom.exception';
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
-  }
+  constructor(private userRepository: UserRepository) {}
 
-  findAll() {
-    return `This action returns all users`;
-  }
+  async getMe(userId: string): Promise<ApiResponse<any>> {
+    const user = await this.userRepository.findById(userId);
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
+    if (!user) {
+      throw new CustomException(
+        HttpStatus.NOT_FOUND,
+        'USER_NOT_FOUND',
+        'Không tìm thấy thông tin người dùng',
+      );
+    }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    return new ApiResponse(true, 'Lấy thông tin hồ sơ thành công', user);
   }
 }
