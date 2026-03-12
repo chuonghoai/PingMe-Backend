@@ -72,6 +72,7 @@ export class MediaService {
         finalResourceType = EMediaType.IMAGE;
       }
 
+      // Save media into DB
       const newMedia = this.mediaRepository.create({
         publicId: dto.public_id,
         secureUrl: dto.secure_url,

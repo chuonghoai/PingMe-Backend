@@ -1,10 +1,11 @@
+/* eslint-disable prettier/prettier */
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
 } from 'typeorm';
-import { EMediaType } from '../enums/media.enum';
+import { EMediaStatus, EMediaType } from '../enums/media.enum';
 
 @Entity('media_objects')
 export class MediaObject {
@@ -37,4 +38,7 @@ export class MediaObject {
 
   @Column({ type: 'float', nullable: true })
   duration: number;
+
+  @Column({ type: 'enum', enum: EMediaStatus, nullable: false, default: EMediaStatus.UPLOADED })
+  status: EMediaStatus;
 }

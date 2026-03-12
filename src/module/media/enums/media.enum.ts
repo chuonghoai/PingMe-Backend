@@ -3,3 +3,8 @@ export enum EMediaType {
   VIDEO = 'VIDEO',
   AUDIO = 'AUDIO',
 }
+
+export enum EMediaStatus {
+  UPLOADED = 'UPLOADED',
+  USED = 'USED',
+}
