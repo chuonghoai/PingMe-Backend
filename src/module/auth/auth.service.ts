@@ -75,7 +75,7 @@ export class AuthService {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_CREDENTIALS',
-        'Email hoặc mật khẩu không đúng',
+        'Mật khẩu không đúng',
       );
     }
 

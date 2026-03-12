@@ -106,7 +106,7 @@ export class MediaService {
       
       const [imageResult, videoResult, rawResult] = await Promise.all([
         cloudinary.api.delete_resources_by_tag('tmp', { resource_type: 'image' }),
-        cloudinary.api.delete_resources_by_tag('tmp', { resource_type: 'video' }), // video bao gồm cả audio
+        cloudinary.api.delete_resources_by_tag('tmp', { resource_type: 'video' }),
         cloudinary.api.delete_resources_by_tag('tmp', { resource_type: 'raw' }),
       ]);
       

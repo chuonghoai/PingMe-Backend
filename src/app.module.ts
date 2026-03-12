@@ -1,3 +1,4 @@
+import { ConversationModule } from './module/conversations/conversations.module';
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -43,6 +44,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AuthModule,
     MediaModule,
     EmailModule,
+    ConversationModule,
   ],
   controllers: [],
   providers: [
