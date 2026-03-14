@@ -20,6 +20,7 @@ import { ENV_VARS } from 'src/constants/env.constants';
 import { WebsocketsService } from './websockets.service';
 import { ConversationService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
+import { Throttle } from '@nestjs/throttler';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -77,6 +78,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Typing
   @SubscribeMessage('typing')
+  @Throttle({ default: { limit: 10, ttl: 1000 } })
   async handleTyping(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { conversationId: string; isTyping: boolean },
@@ -98,6 +100,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Send message
   @SubscribeMessage('send_message')
+  @Throttle({ default: { limit: 10, ttl: 1000 } })
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() 
@@ -139,6 +142,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Revoke message
   @SubscribeMessage('revoke_message')
+  @Throttle({ default: { limit: 10, ttl: 1000 } })
   async handleRevokeMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { messageId: string; conversationId: string },
@@ -167,6 +171,4 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
   }
-
-
 }

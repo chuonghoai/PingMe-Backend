@@ -22,7 +22,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // API: Login
-  @Throttle({ default: { limit: 1, ttl: 1000 } })
+  @Throttle({ default: { limit: 2, ttl: 1000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {

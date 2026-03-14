@@ -11,6 +11,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MessagesModule } from './module/messages/messages.module';
+import { WebsocketsModule } from './module/websockets/websockets.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { MessagesModule } from './module/messages/messages.module';
     EmailModule,
     ConversationModule,
     MessagesModule,
+    WebsocketsModule,
   ],
   controllers: [],
   providers: [

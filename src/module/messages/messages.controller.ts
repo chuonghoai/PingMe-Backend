@@ -13,6 +13,7 @@ import {
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
 import { GetMessagesDto } from './dto/get-messages.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
@@ -21,6 +22,7 @@ export class MessagesController {
 
   @Get(':conversationId')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 1000 } })
   async getMessages(
     @Request() req: any,
     @Param('conversationId') conversationId: string,
@@ -40,6 +42,7 @@ export class MessagesController {
 
   @Get(':conversationId/context/:messageId')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 1000 } })
   async getMessageContext(
     @Request() req: any,
     @Param('conversationId') conversationId: string,
