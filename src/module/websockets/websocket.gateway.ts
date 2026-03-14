@@ -107,6 +107,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
       mediaId?: string;
       temporaryId?: string;
+      replyToId?: string;
     },
   ) {
     const senderId = client.data.userId;
@@ -166,4 +167,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
   }
+
+
 }

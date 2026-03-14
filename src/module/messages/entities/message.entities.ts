@@ -41,6 +41,13 @@ export class Message {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ nullable: true })
+  replyToId: string;
+
+  @ManyToOne(() => Message, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'replyToId' })
+  replyTo: Message;
+
   @ManyToOne(() => Conversation, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'conversationId' })
   conversation: Conversation;
