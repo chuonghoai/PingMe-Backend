@@ -10,6 +10,7 @@ import { EmailModule } from './module/email/email.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MessagesModule } from './module/messages/messages.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     MediaModule,
     EmailModule,
     ConversationModule,
+    MessagesModule,
   ],
   controllers: [],
   providers: [

@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -16,6 +18,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ENV_VARS } from 'src/constants/env.constants';
 import { WebsocketsService } from './websockets.service';
+import { ConversationService } from '../conversations/conversations.service';
+import { MessagesService } from '../messages/messages.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -26,6 +30,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private jwtService: JwtService,
     private configService: ConfigService,
     private websocketsService: WebsocketsService,
+    private messagesService: MessagesService,
+    private conversationService: ConversationService,
   ) {}
 
   // Connect websocket
@@ -65,6 +71,98 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.emit('user_offline', {
         userId: disconnectedUserId,
         lastActiveAt: new Date(),
+      });
+    }
+  }
+
+  // Typing
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string; isTyping: boolean },
+  ) {
+    const senderId = client.data.userId;
+    // eslint-disable-next-line prettier/prettier
+    const receiverIds = await this.conversationService.getParticipantIds(payload.conversationId, senderId);
+    receiverIds.forEach((receiverId) => {
+      const socketId = this.websocketsService.getSocketId(receiverId);
+      if (socketId) {
+        this.server.to(socketId).emit('is_typing', {
+          conversationId: payload.conversationId,
+          userId: senderId,
+          isTyping: payload.isTyping,
+        });
+      }
+    });
+  }
+
+  // Send message
+  @SubscribeMessage('send_message')
+  async handleSendMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() 
+    payload: {
+      conversationId: string;
+      content?: string;
+      type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO';
+      mediaId?: string;
+      temporaryId?: string;
+    },
+  ) {
+    const senderId = client.data.userId;
+
+    const savedMessage = await this.messagesService.saveNewMessage(
+      senderId,
+      payload,
+    );
+
+    const receiverIds = await this.conversationService.getParticipantIds(
+      payload.conversationId,
+      senderId,
+    );
+
+    receiverIds.forEach((receiverId) => {
+      const socketId = this.websocketsService.getSocketId(receiverId);
+      if (socketId) {
+        this.server.to(socketId).emit('new_message', savedMessage);
+      } else {
+        // Nếu user tắt app -> Gọi Firebase Push Notification (FCM) ở đây
+        // this.fcmService.sendNotification(receiverId, ...);
+      }
+    });
+    client.emit('message_sent_success', {
+      temporaryId: payload.temporaryId,
+      message: savedMessage,
+    });
+  }
+
+  // Revoke message
+  @SubscribeMessage('revoke_message')
+  async handleRevokeMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { messageId: string; conversationId: string },
+  ) {
+    const senderId = client.data.userId;
+
+    const revokedMessage = await this.messagesService.revokeMessage(
+      payload.messageId,
+      senderId,
+    );
+
+    if (revokedMessage) {
+      const receiverIds = await this.conversationService.getParticipantIds(
+        payload.conversationId,
+        senderId,
+      );
+
+      receiverIds.forEach((receiverId) => {
+        const socketId = this.websocketsService.getSocketId(receiverId);
+        if (socketId) {
+          this.server.to(socketId).emit('message_revoked', {
+            messageId: payload.messageId,
+            conversationId: payload.conversationId,
+          });
+        }
       });
     }
   }

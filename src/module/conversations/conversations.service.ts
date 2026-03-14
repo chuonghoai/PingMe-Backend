@@ -123,4 +123,18 @@ export class ConversationService {
     await this.conversationRepo.remove(conv);
     return new ApiResponse(true, 'Đã xóa hội thoại vĩnh viễn', null);
   }
+
+  async getParticipantIds(conversationId: string, excludeUserId?: string): Promise<string[]> {
+    const query = this.participantRepo.createQueryBuilder('cp')
+      .select('cp.userId')
+      .where('cp.conversationId = :conversationId', { conversationId });
+
+    if (excludeUserId) {
+      query.andWhere('cp.userId != :excludeUserId', { excludeUserId });
+    }
+
+    const participants = await query.getMany();
+    
+    return participants.map(p => p.userId);
+  }
 }
