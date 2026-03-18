@@ -72,6 +72,7 @@ export class AuthService {
     // Verify Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log('Sai mat khau')
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
         'INVALID_CREDENTIALS',
@@ -220,7 +221,8 @@ export class AuthService {
 
     latestOtp.isUsed = true;
     await this.emailRepository.save(latestOtp);
-
+    
+    console.log('Dang ky thanh cong');
     return new ApiResponse(
       true, 
       'Đăng ký thành công.',
@@ -254,6 +256,7 @@ export class AuthService {
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
+    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong')
     return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
   }
 
@@ -283,6 +286,7 @@ export class AuthService {
       await this.emailService.sendOtp(email, 'Mã khôi phục mật khẩu - PingMe');
     }
 
+    console.log('Mã khôi phục mật khẩu đã được gửi đi');
     return new ApiResponse(
       true,
       'Mã khôi phục mật khẩu đã được gửi đi',
@@ -310,6 +314,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     await this.userRepository.save(user);
+    console.log('Dat lai mat khau thanh cong');
 
     // Revoked OTP
     latestOtp.isUsed = true;

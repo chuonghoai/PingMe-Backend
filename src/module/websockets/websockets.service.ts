@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from '../users/users.repository';
 
@@ -34,11 +35,15 @@ export class WebsocketsService {
         lastActiveAt: new Date(),
       });
     }
-
+    console.log(`${disconnectedUserId} đã offline`);
     return disconnectedUserId;
   }
 
   getSocketId(userId: string): string | undefined {
     return this.connectedUsers.get(userId);
+  }
+
+  async getOnlineUsers(): Promise<string[] | null> {
+    return Array.from(this.connectedUsers.keys());
   }
 }

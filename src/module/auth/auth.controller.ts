@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/require-await */
@@ -26,6 +28,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
+    console.log('Dang nhap: ' + loginDto.email + ' - ' + loginDto.password);
     return this.authService.login(loginDto);
   }
 
@@ -40,6 +43,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
+    console.log('Da nhan data, dang tien hanh dang ky');
     return this.authService.register(registerDto);
   }
 
@@ -47,6 +51,7 @@ export class AuthController {
   @Post('add-profile')
   @HttpCode(HttpStatus.OK)
   async addProfile(@Body() addProfileDto: AddProfileDto) {
+    console.log(addProfileDto);
     return this.authService.addProfile(addProfileDto);
   }
 
@@ -55,6 +60,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Body('refreshToken') refreshToken: string) {
+    console.log('Dang xuat');
     return this.authService.logout(refreshToken);
   }
 
@@ -69,6 +75,9 @@ export class AuthController {
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    console.log(
+      `Da nhan data: ${resetPasswordDto.email}-${resetPasswordDto.newPassword}-${resetPasswordDto.otp}`,
+    );
     return this.authService.resetPassword(resetPasswordDto);
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -52,10 +53,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.userId = userId;
 
       await this.websocketsService.handleUserOnline(userId, client.id);
+      console.log(`${userId} đã online`);
+      console.log(`${client.id} đã online`);
 
       // Emit event
       client.emit('connected', { success: true, userId: userId });
       client.broadcast.emit('user_online', { userId: userId });
+
+      const currentOnlineUsers = await this.websocketsService.getOnlineUsers();
+      client.emit('online_users_list', currentOnlineUsers);
     } catch (error) {
       client.disconnect();
     }

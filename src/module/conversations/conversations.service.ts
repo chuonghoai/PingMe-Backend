@@ -17,6 +17,7 @@ export class ConversationService {
 
   // Get conversation list
   async getMyConversations(userId: string): Promise<ApiResponse<any>> {
+    console.log('Lay conversation list cua user: ' + userId);
     const participants = await this.participantRepo.createQueryBuilder('cp')
       .innerJoinAndSelect('cp.conversation', 'conv')
       .leftJoinAndSelect('conv.participants', 'other_cp')

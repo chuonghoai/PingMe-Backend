@@ -19,20 +19,20 @@ export class EmailService {
 
     await this.emailRepository.createAndSaveOtp(email, otp, expirationTime);
 
-    try {
-      await this.mailerService.sendMail({
-        to: email,
-        subject: subject,
-        template: './otp',
-        context: {
-          email: email, 
-          otp: otp,
-        },
-      });
-
-      return new ApiResponse(true, `OTP đã được gửi tới email ${email}`);
-    } catch (error) {
+    this.mailerService.sendMail({
+      to: email,
+      subject: subject,
+      template: './otp',
+      context: {
+        email: email, 
+        otp: otp,
+      },
+    }).catch((error) => {
       throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'SERVER_ERROR', 'Lỗi khi gửi email');
-    }
+      console.error(`[EmailService] Lỗi khi gửi email tới ${email}:`, error);
+    });
+
+    console.log('Email dang duoc gui den: ' + email);
+    return new ApiResponse(true, `OTP đang được gửi tới email ${email}`);
   }
 }
