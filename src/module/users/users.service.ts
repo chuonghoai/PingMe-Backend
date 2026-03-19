@@ -147,4 +147,15 @@ export class UsersService {
       isHideMyLocation: user.isHideMyLocation,
     });
   }
+
+  // Update status message
+  async updateStatusMessage(userId: string, statusMessage: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
+    }
+
+    user.statusMessage = statusMessage;
+    await this.userRepository.save(user);
+  }
 }

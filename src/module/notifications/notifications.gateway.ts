@@ -138,4 +138,12 @@ export class NotificationsGateway {
       }
     }
   }
+
+  // Send notification to friend
+  public sendNotificationToFriends(friendIds: string[], payload: any) {
+    const onlineSockets = this.websocketsService.getOnlineSockets(friendIds);
+    if (onlineSockets.length > 0) {
+      this.server.to(onlineSockets).emit('new_notification', payload);
+    }
+  }
 }

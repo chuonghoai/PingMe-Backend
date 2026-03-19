@@ -36,13 +36,14 @@ export const processFriendNear = (
 
 // Format payload to emit
 export const buildNotificationPayload = (
-  subType: 'FRIEND_MOVED' | 'FRIEND_NEAR',
+  subType: string,
   title: string,
   message: string,
   metadata: any,
+  type: string = 'LOCATION',
 ) => {
   return {
-    type: 'LOCATION',
+    type,
     subType,
     title,
     message,

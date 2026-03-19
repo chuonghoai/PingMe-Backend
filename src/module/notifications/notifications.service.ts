@@ -99,4 +99,29 @@ export class NotificationsService {
     
     return await this.notificationRepo.save(notification);
   }
+
+  // Update status
+  async createStatusUpdateNotifications(
+    actorId: string,
+    actorName: string,
+    friendIds: string[],
+    statusMessage: string,
+  ) {
+    if (friendIds.length === 0) return [];
+
+    const notifications = friendIds.map((friendId) => {
+      return this.notificationRepo.create({
+        userId: friendId,
+        actorId: actorId,
+        type: ENotificationType.ACTIVITY,
+        subType: ENotificationSubType.STATUS_UPDATE,
+        title: 'Cập nhật trạng thái',
+        message: `${actorName} đã cập nhật trạng thái mới: ${statusMessage}`,
+        metadata: { statusMessage },
+        isRead: false,
+      });
+    });
+
+    return await this.notificationRepo.save(notifications);
+  }
 }
