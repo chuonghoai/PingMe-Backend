@@ -1,16 +1,20 @@
+/* eslint-disable prettier/prettier */
 import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Friend } from './entities/friend.entity';
 import { User } from '../users/entities/user.entity';
-import { FriendStatus } from './enums/friend-status.enum';
+import { FriendStatus, FriendRequestAction } from './enums/friend-status.enum';
 import {
   SendFriendRequestDto,
   FriendRequestResponseDto,
+  RespondFriendRequestDto,
+  RespondFriendResponseDto as ResponseFriendResponseDto,
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 
@@ -83,5 +87,45 @@ export class FriendsService {
       createdAt: savedRequest.createdAt,
     };
     return new ApiResponse(true, 'Friend request sent', responseData);
+  }
+
+  // Accept/reject friend request
+  async responseFriendRequest(
+    userId: string, 
+    dto: RespondFriendRequestDto
+  ): Promise<ApiResponse<ResponseFriendResponseDto>> {
+    const { requestId, action } = dto;
+
+    // Find friend request
+    const friendRequest = await this.friendRepo.findOne({ where: { id: requestId } });
+    if (!friendRequest) {
+      throw new NotFoundException('Không tìm thấy lời mời kết bạn này');
+    }
+
+    // Security data
+    if (friendRequest.targetUserId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xử lý lời mời kết bạn này');
+    }
+    if (friendRequest.status !== FriendStatus.PENDING) {
+      throw new BadRequestException('Lời mời kết bạn này đã được xử lý trước đó');
+    }
+
+    // Return
+    if (action === FriendRequestAction.ACCEPT) {
+      friendRequest.status = FriendStatus.ACCEPTED;
+      await this.friendRepo.save(friendRequest);
+
+      return new ApiResponse(true, 'Đã chấp nhận lời mời kết bạn', {
+        requestId: friendRequest.id,
+        status: FriendStatus.ACCEPTED,
+      });
+    } else {
+      await this.friendRepo.remove(friendRequest);
+
+      return new ApiResponse(true, 'Đã từ chối lời mời kết bạn', {
+        requestId: friendRequest.id,
+        status: FriendStatus.REJECTED,
+      });
+    }
   }
 }

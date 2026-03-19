@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
@@ -10,7 +15,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { FriendsService } from './friends.service';
-import { SendFriendRequestDto } from './dto/friend.dto';
+import { RespondFriendRequestDto, SendFriendRequestDto } from './dto/friend.dto';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
 
 @Controller('friends')
@@ -23,5 +28,12 @@ export class FriendsController {
   async sendFriendRequest(@Req() req: any, @Body() dto: SendFriendRequestDto) {
     dto.senderId = req.user.userId;
     return this.friendsService.sendFriendRequest(dto);
+  }
+
+  @Post('respond')
+  @HttpCode(HttpStatus.OK)
+  async respondFriendRequest(@Req() req: any, @Body() dto: RespondFriendRequestDto) {
+    const currentUserId = req.user.userId;
+    return this.friendsService.responseFriendRequest(currentUserId, dto);
   }
 }

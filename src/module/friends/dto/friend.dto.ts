@@ -1,5 +1,6 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { FriendStatus } from '../enums/friend-status.enum';
+/* eslint-disable prettier/prettier */
+import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { FriendRequestAction, FriendStatus } from '../enums/friend-status.enum';
 
 export class SendFriendRequestDto {
   @IsString()
@@ -25,4 +26,20 @@ export interface FriendRequestResponseDto {
   };
   status: FriendStatus | string;
   createdAt: Date;
+}
+
+
+export class RespondFriendRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  requestId: string;
+
+  @IsEnum(FriendRequestAction, { message: 'Action chỉ được phép là ACCEPT hoặc REJECT' })
+  @IsNotEmpty()
+  action: FriendRequestAction;
+}
+
+export interface RespondFriendResponseDto {
+  requestId: string;
+  status: string;
 }
