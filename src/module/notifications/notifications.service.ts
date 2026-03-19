@@ -145,13 +145,6 @@ export class NotificationsService {
     });
 
     const savedNotification = await this.notificationRepo.save(notification);
-
-    // ==========================================
-    // TODO: TÍCH HỢP FIREBASE PUSH NOTIFICATION
-    // ==========================================
-    // Tại đây, sau khi lưu DB thành công, bạn sẽ gọi service Firebase.
-    // VD: await this.firebaseService.sendPushToUser(userId, title, message);
-    
     return savedNotification;
   }
 }
