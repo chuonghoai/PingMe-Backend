@@ -15,11 +15,15 @@ import { WebsocketsService } from '../websockets/websockets.service';
 import { FriendsService } from '../friends/friends.service';
 import { UsersService } from '../users/users.service';
 import { forwardRef, Inject } from '@nestjs/common';
-import { calculateDistance } from 'src/utils/calculate.util';
+import {
+  processFriendNear,
+  buildNotificationPayload,
+} from './notification.calculate';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class NotificationsGateway {
   @WebSocketServer() server: Server;
+
   private notifiedNearFriends = new Map<string, number>();
 
   constructor(
@@ -30,25 +34,28 @@ export class NotificationsGateway {
     private readonly websocketsService: WebsocketsService,
   ) {}
 
-  // auto get notification if someone (friend) go to order place
+  // Auto get notification if someone (friend) go to order place
   @SubscribeMessage('location_moved')
   async handleLocationMoved(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { locationName: string; lat: number; lng: number },
   ) {
-    // Get actor in websocket
+    // get actorId
     const actorId = this.websocketsService.getUserIdBySocketId(client.id);
     if (!actorId) return;
 
-    // Update location last update
+    // Update actor's location in DB
     await this.usersService.updateLocation(actorId, payload.lat, payload.lng);
 
-    // Create notification
+    // Find entity actor
     const actor = await this.usersService.findById(actorId);
     if (!actor) return;
+
+    // get list friend ids
     const friendIds = await this.friendsService.getFriendIds(actorId);
     if (friendIds.length === 0) return;
 
+    // Create notification in DB
     await this.notificationsService.createFriendMovedNotifications(
       actorId,
       actor.fullname,
@@ -61,80 +68,71 @@ export class NotificationsGateway {
     // Emit event
     const onlineSockets = this.websocketsService.getOnlineSockets(friendIds);
     if (onlineSockets.length > 0) {
-      this.server.to(onlineSockets).emit('new_notification', {
-        type: 'LOCATION',
-        subType: 'FRIEND_MOVED',
-        title: 'Cập nhật vị trí',
-        message: `${actor.fullname} vừa đến ${payload.locationName}`,
-        metadata: payload,
-      });
+      const emitPayload = buildNotificationPayload(
+        'FRIEND_MOVED',
+        'Cập nhật vị trí',
+        `${actor.fullname} vừa đến ${payload.locationName}`,
+        payload,
+      );
+      this.server.to(onlineSockets).emit('new_notification', emitPayload);
     }
   }
 
-  // auto push notification if actor move near friends
+  // Auto push notification if actor move near friends
   @SubscribeMessage('check_friend_near')
   async handleFriendNear(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { distance?: number },
   ) {
-    // Find actor
+    // get actor Id
     const actorId = this.websocketsService.getUserIdBySocketId(client.id);
     if (!actorId) return;
 
-    // distance limit and actor's coordinates
+    // Default distance limit ?
     const distanceLimit = payload?.distance || 500;
+
+    // get actor entity
     const actor = await this.usersService.findById(actorId);
     if (!actor || !actor.lat || !actor.lng) return;
 
-    // Get list friend
+    // get list friends entity
     const friendIds = await this.friendsService.getFriendIds(actorId);
     if (friendIds.length === 0) return;
     const friends = await this.usersService.findUsersByIds(friendIds);
 
-    // Caculate distance
     for (const friend of friends) {
       if (!friend.lat || !friend.lng) continue;
 
-      const dist = calculateDistance(
+      const { shouldNotify, distance } = processFriendNear(
         actor.lat,
         actor.lng,
         friend.lat,
         friend.lng,
+        actorId,
+        friend.id,
+        distanceLimit,
+        this.notifiedNearFriends,
       );
-      const cacheKey = `${actorId}_${friend.id}`;
 
-      if (dist <= distanceLimit) {
-        // Anti spam request
-        const lastNotified = this.notifiedNearFriends.get(cacheKey);
-        const now = Date.now();
-        if (lastNotified && now - lastNotified < 30 * 60 * 1000) {
-          continue;
-        }
-
-        this.notifiedNearFriends.set(cacheKey, now);
-
-        // Create notification
+      if (shouldNotify) {
+        // create notification entity
         await this.notificationsService.createFriendNearNotification(
           actorId,
           actor.fullname,
           friend.id,
-          dist,
+          distance,
         );
 
-        // Emit event
+        // emit event
         const socketId = this.websocketsService.getSocketId(friend.id);
         if (socketId) {
-          this.server.to(socketId).emit('new_notification', {
-            type: 'LOCATION',
-            subType: 'FRIEND_NEAR',
-            title: 'Bạn bè ở gần',
-            message: `${actor.fullname} đang cách bạn ${dist}m`,
-            metadata: { distance: `${dist}m` },
-          });
-        }
-      } else {
-        if (this.notifiedNearFriends.has(cacheKey)) {
-          this.notifiedNearFriends.delete(cacheKey);
+          const emitPayload = buildNotificationPayload(
+            'FRIEND_NEAR',
+            'Bạn bè ở gần',
+            `${actor.fullname} đang cách bạn ${distance}m`,
+            { distance: `${distance}m` },
+          );
+          this.server.to(socketId).emit('new_notification', emitPayload);
         }
       }
     }
