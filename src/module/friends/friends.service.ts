@@ -358,7 +358,7 @@ export class FriendsService {
     return new ApiResponse(true, 'Get friend popup successfully', popupData);
   }
 
-  // Get friend's ids
+  // Get user's friends
   async getFriendIds(userId: string): Promise<string[]> {
     const friends = await this.friendRepo.find({
       where: [

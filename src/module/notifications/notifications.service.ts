@@ -78,4 +78,25 @@ export class NotificationsService {
 
     return await this.notificationRepo.save(notifications);
   }
+
+  // Friend near
+  async createFriendNearNotification(
+    actorId: string,
+    actorName: string,
+    friendId: string,
+    distanceMeters: number,
+  ) {
+    const notification = this.notificationRepo.create({
+      userId: friendId,
+      actorId: actorId,
+      type: ENotificationType.LOCATION,
+      subType: ENotificationSubType.FRIEND_NEAR,
+      title: 'Bạn bè ở gần',
+      message: `${actorName} đang cách bạn ${distanceMeters}m`,
+      metadata: { distance: `${distanceMeters}m` },
+      isRead: false,
+    });
+    
+    return await this.notificationRepo.save(notification);
+  }
 }

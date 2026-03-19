@@ -11,7 +11,6 @@ import { NearbyUserResponseDto, UpdateUserRequest } from './dto/user-request.dto
 import { WebsocketsService } from '../websockets/websockets.service';
 import { In, IsNull, Not } from 'typeorm';
 import { calculateDistance } from 'src/utils/calculate.util';
-import { dateTimestampProvider } from 'rxjs/internal/scheduler/dateTimestampProvider';
 
 @Injectable()
 export class UsersService {
@@ -21,7 +20,20 @@ export class UsersService {
     private readonly websocketsService: WebsocketsService
   ) {}
 
-  // Get user by id
+  // find by id
+  async findById(userId: string) {
+    return this.userRepository.findById(userId);
+  }
+
+  // find list users by id
+  async findUsersByIds(userIds: string[]) {
+    if (!userIds || userIds.length === 0) return [];
+    return this.userRepository.find({
+      where: { id: In(userIds) }
+    });
+  }
+
+  // API get user by id
   async getUserBy(userId: string): Promise<ApiResponse<any>> {
     const user = await this.userRepository.findById(userId);
 
