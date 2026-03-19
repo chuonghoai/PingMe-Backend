@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MessagesModule } from './module/messages/messages.module';
 import { WebsocketsModule } from './module/websockets/websockets.module';
+import { FriendsModule } from './module/friends/friends.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { WebsocketsModule } from './module/websockets/websockets.module';
     ConversationModule,
     MessagesModule,
     WebsocketsModule,
+    FriendsModule,
   ],
   controllers: [],
   providers: [

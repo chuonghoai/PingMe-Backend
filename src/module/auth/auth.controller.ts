@@ -23,7 +23,7 @@ import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // API: Login
+  // Login
   @Throttle({ default: { limit: 2, ttl: 1000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -32,14 +32,14 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  // API: Refresh Token
+  // Refresh Token
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() body: Record<string, any>) {
     return this.authService.refreshToken(body);
   }
 
-  // API: Register
+  // Register
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
@@ -47,7 +47,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
-  // API: Add Profile
+  // Add Profile
   @Post('add-profile')
   @HttpCode(HttpStatus.OK)
   async addProfile(@Body() addProfileDto: AddProfileDto) {
@@ -55,7 +55,7 @@ export class AuthController {
     return this.authService.addProfile(addProfileDto);
   }
 
-  // API: Logout
+  // Logout
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -64,14 +64,14 @@ export class AuthController {
     return this.authService.logout(refreshToken);
   }
 
-  // API: Forgot password
+  // Forgot password
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
-  // API: Reset Password
+  // Reset Password
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
