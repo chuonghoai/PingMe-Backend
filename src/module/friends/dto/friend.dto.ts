@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { FriendRequestAction, FriendStatus } from '../enums/friend-status.enum';
+import { FriendPopupStatus, FriendRequestAction, FriendStatus } from '../enums/friend-status.enum';
 
 export class SendFriendRequestDto {
   @IsString()
@@ -69,4 +69,62 @@ export interface FriendRequestItemDto {
   toUserId: string;
   status: FriendStatus | string;
   createdAt: Date;
+}
+
+export interface FriendOnMapDto {
+  userId: string;
+  avatarUrl: string;
+  latitude: number;
+  longitude: number;
+  onlineStatus: string;
+}
+
+export interface FriendMapPopupDto {
+  basicInfo: {
+    userId: string;
+    fullName: string;
+    username: string;
+    avatarUrl: string;
+    onlineStatus: string;
+    lastActive: string;
+  };
+  relationship: {
+    status: FriendPopupStatus | string;
+    requestId: string | null;
+    isRequester: boolean;
+  };
+  location: {
+    address: string;
+    distance: string;
+    latitude: number;
+    longitude: number;
+    updatedAt: string;
+  };
+  activity: {
+    statusMessage: string;
+    activityType: string;
+    battery: number;
+    speed: number;
+  };
+  actions: {
+    canChat: boolean;
+    canShareLocation: boolean;
+    canNavigate: boolean;
+    canMute: boolean;
+  };
+  privacy: {
+    canHideMyLocation: boolean;
+  };
+  optional: {
+    storyUrl: string;
+    checkInLocation: string;
+    rank: {
+      level: number;
+      name: string;
+      iconUrl: string;
+      currentExp: number;
+      nextLevelExp: number;
+      progressPercent: number;
+    };
+  };
 }

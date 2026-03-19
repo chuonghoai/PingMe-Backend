@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
-import { EUserGender, EUserRole, EUserStatus } from '../enums/user.enum';
+import { EUserActivityType, EUserGender, EUserRole, EUserStatus } from '../enums/user.enum';
 
 @Entity('users')
 export class User {
@@ -49,4 +49,40 @@ export class User {
 
   @Column({ type: 'float', nullable: true })
   lng: number;
+
+  @Column({ unique: true, nullable: true })
+  username: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  locationUpdatedAt: Date;
+
+  @Column({ nullable: true, length: 255 })
+  statusMessage: string;
+
+  @Column({ type: 'enum', enum: EUserActivityType, default: EUserActivityType.OFFLINE })
+  activityType: EUserActivityType;
+
+  @Column({ type: 'int', nullable: true })
+  battery: number;
+
+  @Column({ type: 'float', nullable: true })
+  speed: number;
+
+  @Column({ default: false })
+  isHideMyLocation: boolean;
+
+  @Column({ nullable: true })
+  storyUrl: string;
+
+  @Column({ nullable: true })
+  checkInLocation: string;
+
+  @Column({ type: 'int', default: 1 })
+  level: number;
+
+  @Column({ type: 'int', default: 0 })
+  currentExp: number;
 }

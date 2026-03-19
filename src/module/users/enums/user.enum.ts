@@ -13,3 +13,10 @@ export enum EUserRole {
   ADMIN = 'ADMIN',
   CLIENT = 'CLIENT',
 }
+
+export enum EUserActivityType {
+  STAYING = 'STAYING',
+  MOVING = 'MOVING',
+  DRIVING = 'DRIVING',
+  OFFLINE = 'OFFLINE',
+}
