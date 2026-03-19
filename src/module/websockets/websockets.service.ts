@@ -46,4 +46,20 @@ export class WebsocketsService {
   async getOnlineUsers(): Promise<string[]> {
     return Array.from(this.connectedUsers.keys());
   }
+
+  getUserIdBySocketId(socketId: string): string | null {
+    for (const [userId, sId] of this.connectedUsers.entries()) {
+      if (sId === socketId) return userId;
+    }
+    return null;
+  }
+
+  getOnlineSockets(userIds: string[]): string[] {
+    const sockets: string[] = [];
+    userIds.forEach((id) => {
+      const socketId = this.connectedUsers.get(id);
+      if (socketId) sockets.push(socketId);
+    });
+    return sockets;
+  }
 }

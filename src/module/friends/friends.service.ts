@@ -251,6 +251,7 @@ export class FriendsService {
     return new ApiResponse(true, 'Get friends on map successfully', friendsOnMap);
   }
 
+  // Get profile detail pop up
   async getFriendPopup(
     currentUserId: string, 
     targetUserId: string
@@ -355,5 +356,17 @@ export class FriendsService {
       },
     };
     return new ApiResponse(true, 'Get friend popup successfully', popupData);
+  }
+
+  // Get friend's ids
+  async getFriendIds(userId: string): Promise<string[]> {
+    const friends = await this.friendRepo.find({
+      where: [
+        { senderId: userId, status: FriendStatus.ACCEPTED },
+        { targetUserId: userId, status: FriendStatus.ACCEPTED },
+      ],
+    });
+    
+    return friends.map(f => f.senderId === userId ? f.targetUserId : f.senderId);
   }
 }

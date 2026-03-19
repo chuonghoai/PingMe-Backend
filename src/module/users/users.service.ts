@@ -11,6 +11,7 @@ import { NearbyUserResponseDto, UpdateUserRequest } from './dto/user-request.dto
 import { WebsocketsService } from '../websockets/websockets.service';
 import { In, IsNull, Not } from 'typeorm';
 import { calculateDistance } from 'src/utils/calculate.util';
+import { dateTimestampProvider } from 'rxjs/internal/scheduler/dateTimestampProvider';
 
 @Injectable()
 export class UsersService {
@@ -98,5 +99,18 @@ export class UsersService {
 
     nearbyUsers.sort((a, b) => parseInt(a.distance) - parseInt(b.distance));
     return new ApiResponse(true, 'Nearby users fetched', nearbyUsers);
+  }
+
+  // Update location in DB
+  async updateLocation(actorId: string, lat: number, lng: number): Promise<void> {
+    const user = await this.userRepository.findById(actorId);
+    if (!user) {
+      throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
+    }
+
+    user.lat = lat;
+    user.lng = lng;
+    user.locationUpdatedAt = new Date();
+    await this.userRepository.save(user);
   }
 }
