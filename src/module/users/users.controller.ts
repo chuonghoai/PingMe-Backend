@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -12,6 +13,7 @@ import {
   UseGuards,
   Request,
   Body,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
@@ -27,6 +29,22 @@ export class UsersController {
   async getMe(@Request() req: any) {
     const userId = req.user.userId; 
     return this.usersService.getUserBy(userId);
+  }
+
+  @Get('nearby')
+  @HttpCode(HttpStatus.OK)
+  async getNearbyUsers(
+    @Request() req: any,
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+  ) {
+    const userId = req.user.userId;
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    const parsedRadius = radius ? parseFloat(radius) : 100;
+
+    return this.usersService.getNearbyUsers(userId, parsedLat, parsedLng, parsedRadius);
   }
 
   @Put('me')

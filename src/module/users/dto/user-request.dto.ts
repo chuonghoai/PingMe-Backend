@@ -24,3 +24,10 @@ export class UpdateUserRequest {
   @IsString()
   dob: string;
 }
+
+export interface NearbyUserResponseDto {
+  userId: string;
+  fullName: string;
+  avatarUrl: string;
+  distance: string;
+}

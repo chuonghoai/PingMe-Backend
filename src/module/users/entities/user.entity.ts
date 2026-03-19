@@ -43,4 +43,10 @@ export class User {
 
   @Column({ default: false })
   isOnline: boolean;
+
+  @Column({ type: 'float', nullable: true })
+  lat: number;
+
+  @Column({ type: 'float', nullable: true })
+  lng: number;
 }

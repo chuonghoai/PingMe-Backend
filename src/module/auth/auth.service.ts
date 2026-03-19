@@ -6,7 +6,7 @@ import { EmailService } from './../email/email.service';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
  
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
@@ -28,6 +28,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    @Inject(forwardRef(() => UserRepository))
     private userRepository: UserRepository,
     private emailRepository: EmailRepository,
     @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
