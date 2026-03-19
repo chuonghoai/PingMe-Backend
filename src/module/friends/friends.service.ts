@@ -19,6 +19,7 @@ import {
   RespondFriendResponseDto as ResponseFriendResponseDto,
   FriendListResponseDto,
   FriendRequestItemDto,
+  FriendOnMapDto,
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
@@ -210,6 +211,41 @@ export class FriendsService {
 
     await this.friendRepo.remove(friendship);
     return new ApiResponse(true, 'Đã hủy kết bạn thành công', null);
+  }
+
+  // Get list friend render on map
+  async getFriendsOnMap(userId: string): Promise<ApiResponse<FriendOnMapDto[]>> {
+    // Query DB
+    const friends = await this.friendRepo.find({
+      where: [
+        { senderId: userId, status: FriendStatus.ACCEPTED },
+        { targetUserId: userId, status: FriendStatus.ACCEPTED },
+      ],
+      relations: ['sender', 'targetUser'], 
+    });
+
+    // Query websocket
+    const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
+
+    const friendsOnMap: FriendOnMapDto[] = [];
+    for (const friend of friends) {
+      const isSenderMe = friend.senderId === userId;
+      const otherUser = isSenderMe ? friend.targetUser : friend.sender;
+
+      if (otherUser.lat !== null && otherUser.lng !== null && otherUser.lat !== undefined) {
+        if (otherUser.isHideMyLocation) continue;
+
+        const isOnline = onlineUsers.includes(otherUser.id);
+        friendsOnMap.push({
+          userId: otherUser.id,
+          avatarUrl: otherUser.avatarUrl || '',
+          latitude: otherUser.lat,
+          longitude: otherUser.lng,
+          onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+        });
+      }
+    }
+    return new ApiResponse(true, 'Get friends on map successfully', friendsOnMap);
   }
 
   // Util
