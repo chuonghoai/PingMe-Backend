@@ -52,3 +52,16 @@ export interface FriendListResponseDto {
   onlineStatus: string;
   lastActive: string | Date;
 }
+
+export interface FriendRequestItemDto {
+  requestId: string;
+  fromUser: {
+    userId: string;
+    fullName: string;
+    username?: string;
+    avatarUrl: string;
+  };
+  toUserId: string;
+  status: FriendStatus | string;
+  createdAt: Date;
+}

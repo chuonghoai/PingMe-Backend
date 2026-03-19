@@ -34,6 +34,13 @@ export class FriendsController {
     return this.friendsService.getFriendList(currentUserId);
   }
 
+  @Get('requests')
+  @HttpCode(HttpStatus.OK)
+  async getFriendRequests(@Req() req: any, @Query('userId') queryUserId?: string) {
+    const currentUserId = req.user.userId;
+    return this.friendsService.getFriendRequests(currentUserId);
+  }
+
   @Post('request')
   @HttpCode(HttpStatus.OK)
   async sendFriendRequest(@Req() req: any, @Body() dto: SendFriendRequestDto) {

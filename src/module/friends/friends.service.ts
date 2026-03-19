@@ -18,6 +18,7 @@ import {
   RespondFriendRequestDto,
   RespondFriendResponseDto as ResponseFriendResponseDto,
   FriendListResponseDto,
+  FriendRequestItemDto,
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
@@ -54,12 +55,40 @@ export class FriendsService {
         fullName: otherUser.fullname,
         avatarUrl: otherUser.avatarUrl || '',
         onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
-        // GỌI HÀM FORMAT THỜI GIAN
         lastActive: this.formatLastActive(otherUser.lastActiveAt, isOnline), 
       };
     });
 
     return new ApiResponse(true, 'Get friend list successfully', friendList);
+  }
+
+  // Get friend requests list
+  async getFriendRequests(userId: string): Promise<ApiResponse<FriendRequestItemDto[]>> {
+    // Query
+    const requests = await this.friendRepo.find({
+      where: {
+        targetUserId: userId,
+        status: FriendStatus.PENDING,
+      },
+      relations: ['sender'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    // Return
+    const requestList: FriendRequestItemDto[] = requests.map((req) => ({
+      requestId: req.id,
+      fromUser: {
+        userId: req.sender.id,
+        fullName: req.sender.fullname,
+        avatarUrl: req.sender.avatarUrl || '',
+      },
+      toUserId: req.targetUserId,
+      status: req.status,
+      createdAt: req.createdAt,
+    }));
+    return new ApiResponse(true, 'Get friend requests successfully', requestList);
   }
 
   // Send friend request
