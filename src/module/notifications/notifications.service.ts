@@ -124,4 +124,34 @@ export class NotificationsService {
 
     return await this.notificationRepo.save(notifications);
   }
+
+  // System - Security Alert
+  async createSecurityAlertNotification(
+    userId: string,
+    device: string,
+    location: string,
+    ipAddress: string,
+  ) {
+    const message = `Phát hiện đăng nhập từ thiết bị lạ (${device}) tại ${location}. Hãy kiểm tra xem có phải bạn không?`;
+
+    const notification = this.notificationRepo.create({
+      userId: userId,
+      type: ENotificationType.SYSTEM,
+      subType: ENotificationSubType.SECURITY_ALERT,
+      title: 'Cảnh báo bảo mật',
+      message: message,
+      metadata: { device, location, ipAddress },
+      isRead: false,
+    });
+
+    const savedNotification = await this.notificationRepo.save(notification);
+
+    // ==========================================
+    // TODO: TÍCH HỢP FIREBASE PUSH NOTIFICATION
+    // ==========================================
+    // Tại đây, sau khi lưu DB thành công, bạn sẽ gọi service Firebase.
+    // VD: await this.firebaseService.sendPushToUser(userId, title, message);
+    
+    return savedNotification;
+  }
 }

@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 import { FriendsService } from '../friends/friends.service';
 import { NotificationsGateway } from './notifications.gateway';
-import { UpdateStatusDto } from './dto/notifications.dto';
+import { SecurityAlertDto, UpdateStatusDto } from './dto/notifications.dto';
 import { buildNotificationPayload } from './notification.calculate';
 import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
 
@@ -35,6 +35,27 @@ export class NotificationsController {
   async getNotifications(@Req() req: any) {
     const currentUserId = req.user.userId;
     return this.notificationsService.getNotifications(currentUserId);
+  }
+
+  @Post('system/security')
+  @HttpCode(HttpStatus.OK)
+  async triggerSecurityAlert(@Req() req: any, @Body() dto: SecurityAlertDto) {
+    const userId = req.user.userId;
+    const loc = dto.location || 'vị trí không xác định';
+
+    const notification =
+      await this.notificationsService.createSecurityAlertNotification(
+        userId,
+        dto.device,
+        loc,
+        dto.ipAddress,
+      );
+
+    return new ApiResponse(true, 'Security alert notification', {
+      subType: 'SECURITY_ALERT',
+      message: notification.message,
+      metadata: notification.metadata,
+    });
   }
 
   @Post('activity/status')
