@@ -13,6 +13,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MessagesModule } from './module/messages/messages.module';
 import { WebsocketsModule } from './module/websockets/websockets.module';
 import { FriendsModule } from './module/friends/friends.module';
+import { NotificationsModule } from './module/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { FriendsModule } from './module/friends/friends.module';
     MessagesModule,
     WebsocketsModule,
     FriendsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [
