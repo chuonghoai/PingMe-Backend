@@ -31,3 +31,14 @@ export interface NearbyUserResponseDto {
   avatarUrl: string;
   distance: string;
 }
+
+export enum ELocationShareAction {
+  START = 'START',
+  STOP = 'STOP',
+}
+
+export class ToggleLocationShareDto {
+  @IsEnum(ELocationShareAction, { message: 'Action chỉ được phép là START hoặc STOP' })
+  @IsNotEmpty({ message: 'Vui lòng truyền action' })
+  action: ELocationShareAction;
+}

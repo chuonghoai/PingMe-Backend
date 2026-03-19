@@ -125,4 +125,26 @@ export class UsersService {
     user.locationUpdatedAt = new Date();
     await this.userRepository.save(user);
   }
+
+  // Start/stop share location
+  async toggleLocationShare(userId: string, action: string): Promise<ApiResponse<any>> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
+    }
+
+    const isHide = action === 'STOP';
+
+    user.isHideMyLocation = isHide;
+    await this.userRepository.save(user);
+
+    const message = isHide 
+      ? 'Đã tắt tính năng chia sẻ vị trí' 
+      : 'Đã bật tính năng chia sẻ vị trí';
+
+    return new ApiResponse(true, message, {
+      userId: user.id,
+      isHideMyLocation: user.isHideMyLocation,
+    });
+  }
 }

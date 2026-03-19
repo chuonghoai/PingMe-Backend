@@ -14,10 +14,11 @@ import {
   Request,
   Body,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
-import { UpdateUserRequest } from './dto/user-request.dto';
+import { ToggleLocationShareDto, UpdateUserRequest } from './dto/user-request.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -52,5 +53,15 @@ export class UsersController {
   async updateUser(@Request() req: any, @Body() updateUserRequest: UpdateUserRequest) {
     const userId = req.user.userId;
     return this.usersService.updateUser(userId, updateUserRequest);
+  }
+
+  @Patch('location-share')
+  @HttpCode(HttpStatus.OK)
+  async toggleLocationShare(
+    @Request() req: any, 
+    @Body() dto: ToggleLocationShareDto
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.toggleLocationShare(userId, dto.action);
   }
 }

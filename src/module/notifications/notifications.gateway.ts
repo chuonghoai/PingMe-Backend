@@ -49,7 +49,7 @@ export class NotificationsGateway {
 
     // Find entity actor
     const actor = await this.usersService.findById(actorId);
-    if (!actor) return;
+    if (!actor || actor.isHideMyLocation) return;
 
     // get list friend ids
     const friendIds = await this.friendsService.getFriendIds(actorId);
@@ -93,7 +93,7 @@ export class NotificationsGateway {
 
     // get actor entity
     const actor = await this.usersService.findById(actorId);
-    if (!actor || !actor.lat || !actor.lng) return;
+    if (!actor || !actor.lat || !actor.lng || actor.isHideMyLocation) return;
 
     // get list friends entity
     const friendIds = await this.friendsService.getFriendIds(actorId);
@@ -101,8 +101,9 @@ export class NotificationsGateway {
     const friends = await this.usersService.findUsersByIds(friendIds);
 
     for (const friend of friends) {
-      if (!friend.lat || !friend.lng) continue;
+      if (!friend.lat || !friend.lng || friend.isHideMyLocation) continue;
 
+      // Anti spam request and calculate distance
       const { shouldNotify, distance } = processFriendNear(
         actor.lat,
         actor.lng,
