@@ -43,7 +43,7 @@ export class WebsocketsService {
     return this.connectedUsers.get(userId);
   }
 
-  async getOnlineUsers(): Promise<string[] | null> {
+  async getOnlineUsers(): Promise<string[]> {
     return Array.from(this.connectedUsers.keys());
   }
 }

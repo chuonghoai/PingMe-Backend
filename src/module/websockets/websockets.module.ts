@@ -9,5 +9,6 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [UsersModule, ConversationModule, MessagesModule, AuthModule],
   providers: [ChatGateway, WebsocketsService],
+  exports: [WebsocketsService],
 })
 export class WebsocketsModule {}

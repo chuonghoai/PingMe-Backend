@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -13,6 +14,9 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  Param,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { FriendsService } from './friends.service';
 import { RespondFriendRequestDto, SendFriendRequestDto } from './dto/friend.dto';
@@ -22,6 +26,13 @@ import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  async getFriendList(@Req() req: any, @Query('userId') queryUserId?: string) {
+    const currentUserId = req.user.userId;
+    return this.friendsService.getFriendList(currentUserId);
+  }
 
   @Post('request')
   @HttpCode(HttpStatus.OK)

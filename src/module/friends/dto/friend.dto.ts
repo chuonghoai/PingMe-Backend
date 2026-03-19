@@ -43,3 +43,12 @@ export interface RespondFriendResponseDto {
   requestId: string;
   status: string;
 }
+
+export interface FriendListResponseDto {
+  userId: string;
+  fullName: string;
+  username?: string; 
+  avatarUrl: string;
+  onlineStatus: string;
+  lastActive: string | Date;
+}

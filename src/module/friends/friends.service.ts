@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
 import {
   Injectable,
@@ -15,15 +17,50 @@ import {
   FriendRequestResponseDto,
   RespondFriendRequestDto,
   RespondFriendResponseDto as ResponseFriendResponseDto,
+  FriendListResponseDto,
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
+import { WebsocketsService } from '../websockets/websockets.service';
 
 @Injectable()
 export class FriendsService {
   constructor(
     @InjectRepository(Friend) private readonly friendRepo: Repository<Friend>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly websocketsService: WebsocketsService,
   ) {}
+
+  // Get friends list
+  async getFriendList(userId: string): Promise<ApiResponse<FriendListResponseDto[]>> {
+    // Get list user's friend
+    const friends = await this.friendRepo.find({
+      where: [
+        { senderId: userId, status: FriendStatus.ACCEPTED },
+        { targetUserId: userId, status: FriendStatus.ACCEPTED },
+      ],
+      relations: ['sender', 'targetUser'], 
+    });
+
+    // Get list user online
+    const onlineUsers = await this.websocketsService.getOnlineUsers();
+
+    const friendList: FriendListResponseDto[] = friends.map((friend) => {
+      const isSenderMe = friend.senderId === userId;
+      const otherUser = isSenderMe ? friend.targetUser : friend.sender;
+      const isOnline = onlineUsers.includes(otherUser.id);
+
+      return {
+        userId: otherUser.id,
+        fullName: otherUser.fullname,
+        avatarUrl: otherUser.avatarUrl || '',
+        onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+        // GỌI HÀM FORMAT THỜI GIAN
+        lastActive: this.formatLastActive(otherUser.lastActiveAt, isOnline), 
+      };
+    });
+
+    return new ApiResponse(true, 'Get friend list successfully', friendList);
+  }
 
   // Send friend request
   async sendFriendRequest(
@@ -127,5 +164,30 @@ export class FriendsService {
         status: FriendStatus.REJECTED,
       });
     }
+  }
+
+  // Util
+  private formatLastActive(lastActiveAt: Date | string | null | undefined, isOnline: boolean): string {
+    if (isOnline) return 'đang online';
+    if (!lastActiveAt) return 'Không rõ';
+
+    const now = new Date();
+    const past = new Date(lastActiveAt);
+    
+    const diffMs = now.getTime() - past.getTime(); 
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60)); 
+
+    if (diffMins < 60) {
+      return diffMins <= 0 ? 'Vừa xong' : `${diffMins} phút trước`;
+    }
+
+    const diffHours = Math.floor(diffMins / 60); 
+    if (diffHours < 24) {
+      return `${diffHours} tiếng trước`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24); 
+    return `${diffDays} ngày trước`;
   }
 }
