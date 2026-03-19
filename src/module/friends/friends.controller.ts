@@ -17,9 +17,10 @@ import {
   Param,
   Get,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { FriendsService } from './friends.service';
-import { RespondFriendRequestDto, SendFriendRequestDto } from './dto/friend.dto';
+import { DeleteFriendDto, RespondFriendRequestDto, SendFriendRequestDto } from './dto/friend.dto';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
 
 @Controller('friends')
@@ -53,5 +54,12 @@ export class FriendsController {
   async respondFriendRequest(@Req() req: any, @Body() dto: RespondFriendRequestDto) {
     const currentUserId = req.user.userId;
     return this.friendsService.responseFriendRequest(currentUserId, dto);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  async unfriend(@Req() req: any, @Body() dto: DeleteFriendDto) {
+    const currentUserId = req.user.userId;
+    return this.friendsService.unfriend(currentUserId, dto.friendId);
   }
 }

@@ -28,6 +28,11 @@ export interface FriendRequestResponseDto {
   createdAt: Date;
 }
 
+export class DeleteFriendDto {
+  @IsString()
+  @IsNotEmpty()
+  friendId: string;
+}
 
 export class RespondFriendRequestDto {
   @IsString()

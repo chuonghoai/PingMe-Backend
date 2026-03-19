@@ -195,6 +195,23 @@ export class FriendsService {
     }
   }
 
+  // Delete friend
+  async unfriend(userId: string, friendId: string): Promise<ApiResponse<null>> {
+    const friendship = await this.friendRepo.findOne({
+      where: [
+        { senderId: userId, targetUserId: friendId, status: FriendStatus.ACCEPTED },
+        { senderId: friendId, targetUserId: userId, status: FriendStatus.ACCEPTED },
+      ],
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('Không tìm thấy quan hệ bạn bè với người dùng này');
+    }
+
+    await this.friendRepo.remove(friendship);
+    return new ApiResponse(true, 'Đã hủy kết bạn thành công', null);
+  }
+
   // Util
   private formatLastActive(lastActiveAt: Date | string | null | undefined, isOnline: boolean): string {
     if (isOnline) return 'đang online';
