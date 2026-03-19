@@ -10,6 +10,7 @@ import { CustomException } from 'src/core/exceptions/custom.exception';
 import { NearbyUserResponseDto, UpdateUserRequest } from './dto/user-request.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
 import { In, IsNull, Not } from 'typeorm';
+import { calculateDistance } from 'src/utils/calculate.util';
 
 @Injectable()
 export class UsersService {
@@ -62,7 +63,7 @@ export class UsersService {
     lat: number, lng: number, 
     radius: number
   ): Promise<ApiResponse<NearbyUserResponseDto[]>> {
-    await this.userRepository.update(userId, { lat, lng });
+    await this.userRepository.update(userId, { lat, lng, locationUpdatedAt: new Date() });
 
     // Get user online
     const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
@@ -83,7 +84,7 @@ export class UsersService {
     // Compute distance
     const nearbyUsers: NearbyUserResponseDto[] = [];
     for (const user of users) {
-      const distance = this.calculateDistance(lat, lng, user.lat, user.lng);
+      const distance = calculateDistance(lat, lng, user.lat, user.lng);
       
       if (distance <= radius) {
         nearbyUsers.push({
@@ -97,20 +98,5 @@ export class UsersService {
 
     nearbyUsers.sort((a, b) => parseInt(a.distance) - parseInt(b.distance));
     return new ApiResponse(true, 'Nearby users fetched', nearbyUsers);
-  }
-
-  // Helper
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371e3;
-    const phi1 = (lat1 * Math.PI) / 180;
-    const phi2 = (lat2 * Math.PI) / 180;
-    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
-    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-              Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return Math.round(R * c);
   }
 }

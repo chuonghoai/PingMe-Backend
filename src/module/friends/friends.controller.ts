@@ -69,4 +69,14 @@ export class FriendsController {
     const currentUserId = req.user.userId;
     return this.friendsService.unfriend(currentUserId, dto.friendId);
   }
+
+  @Get(':friendId/popup')
+  @HttpCode(HttpStatus.OK)
+  async getFriendMapPopup(
+    @Req() req: any, 
+    @Param('friendId') friendId: string
+  ) {
+    const currentUserId = req.user.userId;
+    return this.friendsService.getFriendPopup(currentUserId, friendId);
+  }
 }

@@ -103,7 +103,7 @@ export interface FriendMapPopupDto {
   activity: {
     statusMessage: string;
     activityType: string;
-    battery: number;
+    battery: number | null;
     speed: number;
   };
   actions: {

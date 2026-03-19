@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Friend } from './entities/friend.entity';
 import { User } from '../users/entities/user.entity';
-import { FriendStatus, FriendRequestAction } from './enums/friend-status.enum';
+import { FriendStatus, FriendRequestAction, FriendPopupStatus } from './enums/friend-status.enum';
 import {
   SendFriendRequestDto,
   FriendRequestResponseDto,
@@ -20,9 +20,12 @@ import {
   FriendListResponseDto,
   FriendRequestItemDto,
   FriendOnMapDto,
+  FriendMapPopupDto,
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
+import { calculateDistance } from 'src/utils/calculate.util';
+import { formatDistance, formatLastActive } from 'src/utils/format.util';
 
 @Injectable()
 export class FriendsService {
@@ -56,7 +59,7 @@ export class FriendsService {
         fullName: otherUser.fullname,
         avatarUrl: otherUser.avatarUrl || '',
         onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
-        lastActive: this.formatLastActive(otherUser.lastActiveAt, isOnline), 
+        lastActive: formatLastActive(otherUser.lastActiveAt, isOnline), 
       };
     });
 
@@ -248,28 +251,109 @@ export class FriendsService {
     return new ApiResponse(true, 'Get friends on map successfully', friendsOnMap);
   }
 
-  // Util
-  private formatLastActive(lastActiveAt: Date | string | null | undefined, isOnline: boolean): string {
-    if (isOnline) return 'đang online';
-    if (!lastActiveAt) return 'Không rõ';
+  async getFriendPopup(
+    currentUserId: string, 
+    targetUserId: string
+  ): Promise<ApiResponse<FriendMapPopupDto>> {
+    // Get target and current user
+    const targetUser = await this.userRepo.findOne({ where: { id: targetUserId } });
+    if (!targetUser) {
+      throw new NotFoundException('Người dùng không tồn tại');
+    }
+    const currentUser = await this.userRepo.findOne({ where: { id: currentUserId } });
 
-    const now = new Date();
-    const past = new Date(lastActiveAt);
-    
-    const diffMs = now.getTime() - past.getTime(); 
-    
-    const diffMins = Math.floor(diffMs / (1000 * 60)); 
+    // Friends relation ship
+    const friendship = await this.friendRepo.findOne({
+      where: [
+        { senderId: currentUserId, targetUserId: targetUserId },
+        { senderId: targetUserId, targetUserId: currentUserId },
+      ],
+    });
 
-    if (diffMins < 60) {
-      return diffMins <= 0 ? 'Vừa xong' : `${diffMins} phút trước`;
+    let relStatus = FriendPopupStatus.NONE;
+    let requestId: string | null = null;
+    let isRequester = false;
+
+    if (friendship) {
+      requestId = friendship.id;
+      isRequester = friendship.senderId === currentUserId;
+
+      if (friendship.status === FriendStatus.ACCEPTED) {
+        relStatus = FriendPopupStatus.FRIEND;
+      } else if (friendship.status === FriendStatus.PENDING) {
+        relStatus = isRequester ? FriendPopupStatus.PENDING_SENT : FriendPopupStatus.PENDING_RECEIVED;
+      } else {
+        relStatus = FriendPopupStatus.NONE; 
+      }
     }
 
-    const diffHours = Math.floor(diffMins / 60); 
-    if (diffHours < 24) {
-      return `${diffHours} tiếng trước`;
+    // Online status
+    const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
+    const isOnline = onlineUsers.includes(targetUser.id);
+
+    // Calculate distance
+    let distanceStr = 'Không xác định';
+    if (currentUser?.lat && currentUser?.lng && targetUser.lat && targetUser.lng) {
+      const distanceMeters = calculateDistance(currentUser.lat, currentUser.lng, targetUser.lat, targetUser.lng);
+      distanceStr = formatDistance(distanceMeters);
     }
 
-    const diffDays = Math.floor(diffHours / 24); 
-    return `${diffDays} ngày trước`;
+    // Calculate rank
+    const level = targetUser.level || 1;
+    const currentExp = targetUser.currentExp || 0;
+    const nextLevelExp = level * 1000;
+    const progressPercent = Math.min(Math.round((currentExp / nextLevelExp) * 100), 100);
+
+    // Return data
+    const popupData: FriendMapPopupDto = {
+      basicInfo: {
+        userId: targetUser.id,
+        fullName: targetUser.fullname || 'Người dùng ẩn danh',
+        username: targetUser.username || '',
+        avatarUrl: targetUser.avatarUrl || 'https://ui-avatars.com/api/?name=User',
+        onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+        lastActive: formatLastActive(targetUser.lastActiveAt, isOnline),
+      },
+      relationship: {
+        status: relStatus,
+        requestId: requestId,
+        isRequester: isRequester,
+      },
+      location: {
+        address: targetUser.address || 'Chưa cập nhật địa chỉ',
+        distance: distanceStr,
+        latitude: targetUser.lat,
+        longitude: targetUser.lng,
+        updatedAt: formatLastActive(targetUser.locationUpdatedAt, false),
+      },
+      activity: {
+        statusMessage: targetUser.statusMessage || '',
+        activityType: targetUser.activityType || 'OFFLINE',
+        battery: targetUser.battery ?? 0,
+        speed: targetUser.speed || 0,
+      },
+      actions: {
+        canChat: relStatus === FriendPopupStatus.FRIEND,
+        canShareLocation: relStatus === FriendPopupStatus.FRIEND && !targetUser.isHideMyLocation,
+        canNavigate: targetUser.lat !== null,
+        canMute: relStatus === FriendPopupStatus.FRIEND,
+      },
+      privacy: {
+        canHideMyLocation: targetUser.isHideMyLocation || false,
+      },
+      optional: {
+        storyUrl: targetUser.storyUrl || '',
+        checkInLocation: targetUser.checkInLocation || '',
+        rank: {
+          level: level,
+          name: `Người Khám Phá Lv.${level}`,
+          iconUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+          currentExp: currentExp,
+          nextLevelExp: nextLevelExp,
+          progressPercent: progressPercent,
+        },
+      },
+    };
+    return new ApiResponse(true, 'Get friend popup successfully', popupData);
   }
 }
