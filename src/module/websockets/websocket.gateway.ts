@@ -146,6 +146,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  // Mark read message
+  @SubscribeMessage('mark_read')
+  async handleMarkRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string }
+  ) {
+    // Tìm userId từ socket id
+    const userId = this.websocketsService.getUserIdBySocketId(client.id);
+    if (!userId) return;
+
+    // Reset unreadCount về 0
+    await this.conversationService.resetUnreadCount(payload.conversationId, userId);
+  }
+
   // Revoke message
   @SubscribeMessage('revoke_message')
   @Throttle({ default: { limit: 10, ttl: 1000 } })

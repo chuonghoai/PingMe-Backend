@@ -138,4 +138,15 @@ export class ConversationService {
     
     return participants.map(p => p.userId);
   }
+
+  async resetUnreadCount(conversationId: string, userId: string): Promise<void> {
+    const participant = await this.participantRepo.findOne({
+      where: { conversationId: conversationId, userId: userId }
+    });
+    
+    if (participant) {
+      participant.unreadCount = 0;
+      await this.participantRepo.save(participant);
+    }
+  }
 }
