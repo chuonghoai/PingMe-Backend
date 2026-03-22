@@ -1,0 +1,225 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Injectable, HttpStatus } from '@nestjs/common';
+import { DataSource, LessThan, MoreThan } from 'typeorm';
+import { MessageRepository } from './messages.repository';
+import { ConversationRepository } from '../conversations/repository/conversation.repository';
+import { ConversationParticipantRepository } from '../conversations/repository/conversation-participant.repository';
+import { CustomException } from '../../core/exceptions/custom.exception';
+import { EMessageType } from './enums/messages.dto';
+import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
+
+@Injectable()
+export class MessagesService {
+  constructor(
+    private messageRepo: MessageRepository,
+    private conversationRepo: ConversationRepository,
+    private participantRepo: ConversationParticipantRepository,
+    private dataSource: DataSource,
+  ) {}
+
+  // Save new message
+  async saveNewMessage(senderId: string, payload: any): Promise<any> {
+    const { conversationId, content, type, mediaId } = payload;
+
+    let snippet = 'Tin nhắn mới';
+    if (type === EMessageType.TEXT) {
+      snippet = content
+        ? content.length > 50
+          ? content.substring(0, 50) + '...'
+          : content
+        : '';
+    } else if (type === EMessageType.IMAGE) {
+      snippet = 'Đã gửi 1 ảnh';
+    } else if (type === EMessageType.VIDEO) {
+      snippet = 'Đã gửi 1 video';
+    } else if (type === EMessageType.AUDIO) {
+      snippet = 'Đã gửi 1 tin nhắn thoại';
+    } else {
+      snippet = 'Đã gửi tin nhắn';
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const newMessage = this.messageRepo.create({
+        conversationId,
+        senderId,
+        content: content || null,
+        type: type || EMessageType.TEXT,
+        mediaId: mediaId || null,
+        replyToId: payload.replyToId || null,
+      });
+      const savedMessage = await queryRunner.manager.save(newMessage);
+
+      await queryRunner.manager.update(
+        'conversations',
+        { id: conversationId },
+        {
+          lastMessageSnippet: snippet,
+          lastMessageAt: new Date(),
+        },
+      );
+
+      await queryRunner.manager
+        .createQueryBuilder()
+        .update('conversation_participants')
+        .set({
+          unreadCount: () => 'unreadCount + 1',
+          isVisible: true,
+        })
+        .where('conversationId = :conversationId', { conversationId })
+        .andWhere('userId != :senderId', { senderId })
+        .execute();
+
+      await queryRunner.manager
+        .createQueryBuilder()
+        .update('conversation_participants')
+        .set({ isVisible: true })
+        .where('conversationId = :conversationId', { conversationId })
+        .andWhere('userId = :senderId', { senderId })
+        .execute();
+
+      await queryRunner.commitTransaction();
+
+      return await this.messageRepo.findOne({
+        where: { id: savedMessage.id },
+        relations: ['sender', 'media'],
+        select: {
+          sender: { id: true, fullname: true, avatarUrl: true },
+        },
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new CustomException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'SEND_MESSAGE_FAILED',
+        'Không thể gửi tin nhắn',
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // Revoke message
+  async revokeMessage(messageId: string, senderId: string): Promise<any> {
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId, senderId: senderId },
+    });
+
+    if (!message) {
+      throw new CustomException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Không thể thu hồi tin nhắn này',
+      );
+    }
+
+    message.isRevoked = true;
+    await this.messageRepo.save(message);
+
+    await this.conversationRepo.update(message.conversationId, {
+      lastMessageSnippet: 'Tin nhắn đã được thu hồi',
+    });
+
+    return message;
+  }
+
+  // Get message
+  async getMessages(
+    userId: string,
+    conversationId: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponse<any>> {
+    const participant = await this.participantRepo.findOne({
+      where: { userId, conversationId },
+    });
+    if (!participant) {
+      throw new CustomException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Bạn không có quyền xem tin nhắn của hội thoại này',
+      );
+    }
+
+    if (participant.unreadCount > 0) {
+      participant.unreadCount = 0;
+      await this.participantRepo.save(participant);
+    }
+
+    const skip = (page - 1) * limit;
+    const [messages, total] = await this.messageRepo.findAndCount({
+      where: { conversationId },
+      relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
+      select: {
+        sender: { id: true, fullname: true, avatarUrl: true },
+        replyTo: { id: true, content: true, type: true, sender: { id: true, fullname: true } }
+      },
+      order: { createdAt: 'DESC' },
+      skip: skip,
+      take: limit,
+    });
+
+    return new ApiResponse(true, 'Lấy danh sách tin nhắn thành công', {
+      messages,
+      meta: {
+        totalItems: total,
+        itemCount: messages.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    });
+  }
+
+  async getMessageContext(userId: string, conversationId: string, messageId: string): Promise<ApiResponse<any>> {
+    // 1. Kiểm tra quyền
+    const participant = await this.participantRepo.findOne({ where: { userId, conversationId } });
+    if (!participant) throw new CustomException(HttpStatus.FORBIDDEN, 'FORBIDDEN', 'Không có quyền truy cập');
+
+    // 2. Lấy tin nhắn đích
+    const targetMsg = await this.messageRepo.findOne({
+      where: { id: messageId, conversationId },
+      relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
+      select: {
+        sender: { id: true, fullname: true, avatarUrl: true },
+        replyTo: { id: true, content: true, type: true, sender: { id: true, fullname: true } }
+      }
+    });
+
+    if (!targetMsg) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Tin nhắn không tồn tại');
+
+    // 3. Lấy 15 tin nhắn CŨ HƠN tin nhắn đích (Cuộn lên trên)
+    const olderMessages = await this.messageRepo.find({
+      where: { conversationId, createdAt: LessThan(targetMsg.createdAt) },
+      order: { createdAt: 'DESC' }, // Lấy từ đích giật lùi về quá khứ
+      take: 15,
+      relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
+      select: { sender: { id: true, fullname: true, avatarUrl: true } }
+    });
+
+    // 4. Lấy 15 tin nhắn MỚI HƠN tin nhắn đích (Cuộn xuống dưới)
+    const newerMessages = await this.messageRepo.find({
+      where: { conversationId, createdAt: MoreThan(targetMsg.createdAt) },
+      order: { createdAt: 'ASC' }, // Lấy từ đích tiến về hiện tại
+      take: 15,
+      relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
+      select: { sender: { id: true, fullname: true, avatarUrl: true } }
+    });
+
+    // 5. Gộp lại thành 1 mảng duy nhất, đảo chiều newer để khớp thứ tự DESC (mới nhất nằm đầu mảng cho Frontend dễ dùng FlatList inverted)
+    const contextMessages = [
+      ...newerMessages.reverse(), // Tin mới hơn nằm trên cùng của mảng
+      targetMsg,                  // Đích nằm giữa
+      ...olderMessages            // Tin cũ nằm cuối
+    ];
+
+    return new ApiResponse(true, 'Lấy ngữ cảnh tin nhắn thành công', contextMessages);
+  }
+}
