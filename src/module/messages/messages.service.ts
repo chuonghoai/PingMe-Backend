@@ -87,15 +87,36 @@ export class MessagesService {
 
       await queryRunner.commitTransaction();
 
-      return await this.messageRepo.findOne({
+      // Retrieve full message
+      const fullMessage = await this.messageRepo.findOne({
         where: { id: savedMessage.id },
         relations: ['sender', 'media'],
         select: {
           sender: { id: true, fullname: true, avatarUrl: true },
         },
       });
+
+      // Retrieve updated conversation
+      const updatedConversation = await this.conversationRepo.findOne({
+        where: { id: conversationId },
+        relations: ['participants', 'participants.user'],
+        select: {
+          participants: {
+            id: true,
+            userId: true,
+            unreadCount: true,
+            user: { id: true, fullname: true, avatarUrl: true }
+          }
+        }
+      });
+
+      return {
+        message: fullMessage,
+        conversation: updatedConversation,
+      };
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      console.error(error);
       throw new CustomException(
         HttpStatus.INTERNAL_SERVER_ERROR,
         'SEND_MESSAGE_FAILED',
@@ -128,6 +149,20 @@ export class MessagesService {
     });
 
     return message;
+  }
+
+  // Mark messages as read
+  async markMessagesAsRead(conversationId: string, currentUserId: string): Promise<number> {
+    const updateResult = await this.messageRepo
+      .createQueryBuilder()
+      .update('messages')
+      .set({ isRead: true })
+      .where('conversationId = :conversationId', { conversationId })
+      .andWhere('senderId != :currentUserId', { currentUserId })
+      .andWhere('isRead = false')
+      .execute();
+
+    return updateResult.affected || 0;
   }
 
   // Get message

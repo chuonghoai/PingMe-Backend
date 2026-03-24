@@ -34,7 +34,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private websocketsService: WebsocketsService,
     private messagesService: MessagesService,
     private conversationService: ConversationService,
-  ) {}
+  ) { }
 
   // Connect websocket
   async handleConnection(client: Socket) {
@@ -90,6 +90,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: { conversationId: string; isTyping: boolean },
   ) {
     const senderId = client.data.userId;
+    if (payload.isTyping)
+      console.log(`${senderId} dang typing`)
+    else
+      console.log(`${senderId} dung typing`)
     // eslint-disable-next-line prettier/prettier
     const receiverIds = await this.conversationService.getParticipantIds(payload.conversationId, senderId);
     receiverIds.forEach((receiverId) => {
@@ -109,7 +113,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @Throttle({ default: { limit: 10, ttl: 1000 } })
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() 
+    @MessageBody()
     payload: {
       conversationId: string;
       content?: string;
@@ -121,7 +125,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const senderId = client.data.userId;
 
-    const savedMessage = await this.messagesService.saveNewMessage(
+    const result = await this.messagesService.saveNewMessage(
       senderId,
       payload,
     );
@@ -134,7 +138,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     receiverIds.forEach((receiverId) => {
       const socketId = this.websocketsService.getSocketId(receiverId);
       if (socketId) {
-        this.server.to(socketId).emit('new_message', savedMessage);
+        this.server.to(socketId).emit('new_message', {
+          conversationId: payload.conversationId,
+          message: result.message,
+          conversation: result.conversation
+        });
       } else {
         // Nếu user tắt app -> Gọi Firebase Push Notification (FCM) ở đây
         // this.fcmService.sendNotification(receiverId, ...);
@@ -142,7 +150,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     client.emit('message_sent_success', {
       temporaryId: payload.temporaryId,
-      message: savedMessage,
+      message: result.message,
     });
   }
 
@@ -156,8 +164,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = this.websocketsService.getUserIdBySocketId(client.id);
     if (!userId) return;
 
-    // Reset unreadCount về 0
-    await this.conversationService.resetUnreadCount(payload.conversationId, userId);
+    if (userId && payload.conversationId) {
+      // Reset unreadCount về 0
+      await this.conversationService.resetUnreadCount(payload.conversationId, userId);
+      await this.messagesService.markMessagesAsRead(payload.conversationId, userId);
+
+      client.emit('unread_count_updated', { conversationId: payload.conversationId, unreadCount: 0 });
+
+      const receiverIds = await this.conversationService.getParticipantIds(
+        payload.conversationId,
+        userId,
+      );
+
+      receiverIds.forEach((receiverId) => {
+        const socketId = this.websocketsService.getSocketId(receiverId);
+        if (socketId) {
+          this.server.to(socketId).emit('messages_read', {
+            conversationId: payload.conversationId,
+            userId: userId,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      });
+      console.log(`[WebSocket] User ${userId} đã đọc tin nhắn trong box ${payload.conversationId}`);
+    }
   }
 
   // Revoke message
