@@ -23,6 +23,15 @@ import { ConversationService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
 import { Throttle } from '@nestjs/throttler';
 
+/*  Function:
+    - Connect
+    - Disconnect
+    - Typing
+    - Send message
+    - Mark read message
+    - Revoke message
+*/
+
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

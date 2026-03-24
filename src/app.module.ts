@@ -14,6 +14,7 @@ import { MessagesModule } from './module/messages/messages.module';
 import { WebsocketsModule } from './module/websockets/websockets.module';
 import { FriendsModule } from './module/friends/friends.module';
 import { NotificationsModule } from './module/notifications/notifications.module';
+import { CallsModule } from './module/calls/calls.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { NotificationsModule } from './module/notifications/notifications.module
     WebsocketsModule,
     FriendsModule,
     NotificationsModule,
+    CallsModule,
   ],
   controllers: [],
   providers: [
@@ -62,4 +64,4 @@ import { NotificationsModule } from './module/notifications/notifications.module
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
