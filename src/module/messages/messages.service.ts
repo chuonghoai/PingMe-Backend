@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, HttpStatus } from '@nestjs/common';
-import { DataSource, LessThan, MoreThan } from 'typeorm';
+import { DataSource, LessThan, MoreThan, In } from 'typeorm';
 import { MessageRepository } from './messages.repository';
 import { ConversationRepository } from '../conversations/repository/conversation.repository';
 import { ConversationParticipantRepository } from '../conversations/repository/conversation-participant.repository';
@@ -19,7 +19,7 @@ export class MessagesService {
     private conversationRepo: ConversationRepository,
     private participantRepo: ConversationParticipantRepository,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   // Save new message
   async saveNewMessage(senderId: string, payload: any): Promise<any> {
@@ -256,5 +256,52 @@ export class MessagesService {
     ];
 
     return new ApiResponse(true, 'Lấy ngữ cảnh tin nhắn thành công', contextMessages);
+  }
+
+  // Get meida in conversation
+  async getConversationMedia(
+    userId: string,
+    conversationId: string,
+    page: number,
+    limit: number,
+  ): Promise<ApiResponse<any>> {
+    const participant = await this.participantRepo.findOne({
+      where: { userId, conversationId },
+    });
+
+    if (!participant) {
+      throw new CustomException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Bạn không có quyền xem phương tiện của hội thoại này',
+      );
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [messages, total] = await this.messageRepo.findAndCount({
+      where: {
+        conversationId,
+        type: In([EMessageType.IMAGE, EMessageType.VIDEO])
+      },
+      relations: ['sender', 'media'],
+      select: {
+        sender: { id: true, fullname: true, avatarUrl: true },
+      },
+      order: { createdAt: 'DESC' },
+      skip: skip,
+      take: limit,
+    });
+
+    return new ApiResponse(true, 'Lấy danh sách phương tiện thành công', {
+      messages,
+      meta: {
+        totalItems: total,
+        itemCount: messages.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    });
   }
 }
