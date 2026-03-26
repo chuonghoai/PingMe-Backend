@@ -24,6 +24,9 @@ export class Conversation {
   @Column({ nullable: true })
   lastMessageAt: Date;
 
+  @Column({ type: 'varchar', nullable: true })
+  blockedById: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

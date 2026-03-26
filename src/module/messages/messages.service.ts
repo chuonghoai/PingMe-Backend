@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, HttpStatus } from '@nestjs/common';
-import { DataSource, LessThan, MoreThan, In } from 'typeorm';
+import { DataSource, LessThan, MoreThan, In, And } from 'typeorm';
 import { MessageRepository } from './messages.repository';
 import { ConversationRepository } from '../conversations/repository/conversation.repository';
 import { ConversationParticipantRepository } from '../conversations/repository/conversation-participant.repository';
@@ -24,6 +24,35 @@ export class MessagesService {
   // Save new message
   async saveNewMessage(senderId: string, payload: any): Promise<any> {
     const { conversationId, content, type, mediaId } = payload;
+
+    // Checking block
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId }
+    });
+
+    if (!conversation) {
+      throw new CustomException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Không tìm thấy hội thoại'
+      );
+    }
+
+    if (conversation.blockedById) {
+      if (conversation.blockedById === senderId) {
+        throw new CustomException(
+          HttpStatus.FORBIDDEN,
+          'BLOCKED_BY_YOU',
+          'Bạn phải bỏ chặn người này trước khi gửi tin nhắn.',
+        );
+      } else {
+        throw new CustomException(
+          HttpStatus.FORBIDDEN,
+          'BLOCKED_BY_THEM',
+          'Không thể gửi tin nhắn. Bạn đã bị người dùng này chặn.',
+        );
+      }
+    }
 
     let snippet = 'Tin nhắn mới';
     if (type === EMessageType.TEXT) {
@@ -189,8 +218,14 @@ export class MessagesService {
     }
 
     const skip = (page - 1) * limit;
+
+    const whereCondition: any = { conversationId };
+    if (participant.clearedAt) {
+      whereCondition.createdAt = MoreThan(participant.clearedAt);
+    }
+
     const [messages, total] = await this.messageRepo.findAndCount({
-      where: { conversationId },
+      where: whereCondition,
       relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
       select: {
         sender: { id: true, fullname: true, avatarUrl: true },
@@ -219,8 +254,13 @@ export class MessagesService {
     if (!participant) throw new CustomException(HttpStatus.FORBIDDEN, 'FORBIDDEN', 'Không có quyền truy cập');
 
     // 2. Lấy tin nhắn đích
+    const targetMsgWhere: any = { id: messageId, conversationId };
+    if (participant.clearedAt) {
+      targetMsgWhere.createdAt = MoreThan(participant.clearedAt);
+    }
+
     const targetMsg = await this.messageRepo.findOne({
-      where: { id: messageId, conversationId },
+      where: targetMsgWhere,
       relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
       select: {
         sender: { id: true, fullname: true, avatarUrl: true },
@@ -231,8 +271,16 @@ export class MessagesService {
     if (!targetMsg) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Tin nhắn không tồn tại');
 
     // 3. Lấy 15 tin nhắn CŨ HƠN tin nhắn đích (Cuộn lên trên)
+    const olderWhere: any = { conversationId, createdAt: LessThan(targetMsg.createdAt) };
+    if (participant.clearedAt) {
+      olderWhere.createdAt = And(
+        LessThan(targetMsg.createdAt),
+        MoreThan(participant.clearedAt)
+      );
+    }
+
     const olderMessages = await this.messageRepo.find({
-      where: { conversationId, createdAt: LessThan(targetMsg.createdAt) },
+      where: olderWhere,
       order: { createdAt: 'DESC' }, // Lấy từ đích giật lùi về quá khứ
       take: 15,
       relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
@@ -279,11 +327,16 @@ export class MessagesService {
 
     const skip = (page - 1) * limit;
 
+    const whereCondition: any = {
+      conversationId,
+      type: In([EMessageType.IMAGE, EMessageType.VIDEO])
+    };
+    if (participant.clearedAt) {
+      whereCondition.createdAt = MoreThan(participant.clearedAt);
+    }
+
     const [messages, total] = await this.messageRepo.findAndCount({
-      where: {
-        conversationId,
-        type: In([EMessageType.IMAGE, EMessageType.VIDEO])
-      },
+      where: whereCondition,
       relations: ['sender', 'media'],
       select: {
         sender: { id: true, fullname: true, avatarUrl: true },

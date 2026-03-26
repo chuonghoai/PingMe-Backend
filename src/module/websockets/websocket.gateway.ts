@@ -132,35 +132,42 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       replyToId?: string;
     },
   ) {
-    const senderId = client.data.userId;
+    try {
+      const senderId = client.data.userId;
 
-    const result = await this.messagesService.saveNewMessage(
-      senderId,
-      payload,
-    );
+      const result = await this.messagesService.saveNewMessage(
+        senderId,
+        payload,
+      );
 
-    const receiverIds = await this.conversationService.getParticipantIds(
-      payload.conversationId,
-      senderId,
-    );
+      const receiverIds = await this.conversationService.getParticipantIds(
+        payload.conversationId,
+        senderId,
+      );
 
-    receiverIds.forEach((receiverId) => {
-      const socketId = this.websocketsService.getSocketId(receiverId);
-      if (socketId) {
-        this.server.to(socketId).emit('new_message', {
-          conversationId: payload.conversationId,
-          message: result.message,
-          conversation: result.conversation
-        });
-      } else {
-        // Nếu user tắt app -> Gọi Firebase Push Notification (FCM) ở đây
-        // this.fcmService.sendNotification(receiverId, ...);
-      }
-    });
-    client.emit('message_sent_success', {
-      temporaryId: payload.temporaryId,
-      message: result.message,
-    });
+      receiverIds.forEach((receiverId) => {
+        const socketId = this.websocketsService.getSocketId(receiverId);
+        if (socketId) {
+          this.server.to(socketId).emit('new_message', {
+            conversationId: payload.conversationId,
+            message: result.message,
+            conversation: result.conversation
+          });
+        } else {
+          // Nếu user tắt app -> Gọi Firebase Push Notification (FCM) ở đây
+          // this.fcmService.sendNotification(receiverId, ...);
+        }
+      });
+      client.emit('message_sent_success', {
+        temporaryId: payload.temporaryId,
+        message: result.message,
+      });
+    } catch (error) {
+      client.emit('message_error', {
+        temporaryId: payload.temporaryId,
+        message: error.message || 'Không thể gửi tin nhắn'
+      });
+    }
   }
 
   // Mark read message

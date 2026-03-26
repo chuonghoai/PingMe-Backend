@@ -22,7 +22,7 @@ import { Throttle } from '@nestjs/throttler';
 @Controller('conversations')
 @UseGuards(JwtAuthGuard)
 export class ConversationController {
-  constructor(private readonly conversationService: ConversationService) {}
+  constructor(private readonly conversationService: ConversationService) { }
 
   // Get conversation list
   @Get()
@@ -65,5 +65,26 @@ export class ConversationController {
   ) {
     const userId = req.user.userId;
     return this.conversationService.deleteConversation(userId, conversationId);
+  }
+
+  // Block user
+  @Post(':id/block')
+  @HttpCode(HttpStatus.OK)
+  async blockUser(@Request() req: any, @Param('id') conversationId: string) {
+    return this.conversationService.blockUser(req.user.userId, conversationId);
+  }
+
+  // Unblock user
+  @Post(':id/unblock')
+  @HttpCode(HttpStatus.OK)
+  async unblockUser(@Request() req: any, @Param('id') conversationId: string) {
+    return this.conversationService.unblockUser(req.user.userId, conversationId);
+  }
+
+  // Delete message history
+  @Post(':id/clear-history')
+  @HttpCode(HttpStatus.OK)
+  async clearHistory(@Request() req: any, @Param('id') conversationId: string) {
+    return this.conversationService.clearHistory(req.user.userId, conversationId);
   }
 }
