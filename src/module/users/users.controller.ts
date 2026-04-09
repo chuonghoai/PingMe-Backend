@@ -1,34 +1,67 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable prettier/prettier */
+import {
+  Controller,
+  Get,
+  Put,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Request,
+  Body,
+  Query,
+  Patch,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
+import { ToggleLocationShareDto, UpdateUserRequest } from './dto/user-request.dto';
 
 @Controller('users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getMe(@Request() req: any) {
+    const userId = req.user.userId; 
+    return this.usersService.getUserBy(userId);
   }
 
-  @Get()
-  findAll() {
-    return this.usersService.findAll();
+  @Get('nearby')
+  @HttpCode(HttpStatus.OK)
+  async getNearbyUsers(
+    @Request() req: any,
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+  ) {
+    const userId = req.user.userId;
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    const parsedRadius = radius ? parseFloat(radius) : 100;
+
+    return this.usersService.getNearbyUsers(userId, parsedLat, parsedLng, parsedRadius);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Put('me')
+  @HttpCode(HttpStatus.OK)
+  async updateUser(@Request() req: any, @Body() updateUserRequest: UpdateUserRequest) {
+    const userId = req.user.userId;
+    return this.usersService.updateUser(userId, updateUserRequest);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Patch('location-share')
+  @HttpCode(HttpStatus.OK)
+  async toggleLocationShare(
+    @Request() req: any, 
+    @Body() dto: ToggleLocationShareDto
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.toggleLocationShare(userId, dto.action);
   }
 }

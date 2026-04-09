@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
@@ -8,9 +8,17 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../../core/security/jwt/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { ENV_VARS } from 'src/constants/env.constants';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from '../users/entities/user.entity';
+import { EmailModule } from '../email/email.module';
+import { UsersModule } from '../users/users.module';
+import { UserToken } from './entities/user-token.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([User, UserToken]), 
+    EmailModule,
+    forwardRef(() => UsersModule),
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
