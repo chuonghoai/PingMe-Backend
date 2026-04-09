@@ -1,5 +1,5 @@
 import { EmailRepository } from './email.repository';
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 /* eslint-disable prettier/prettier */
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -11,7 +11,7 @@ export class EmailService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly emailRepository: EmailRepository,
-  ) {}
+  ) { }
 
   async sendOtp(email: string, subject: string): Promise<ApiResponse<any>> {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -19,20 +19,21 @@ export class EmailService {
 
     await this.emailRepository.createAndSaveOtp(email, otp, expirationTime);
 
-    await this.mailerService.sendMail({
-      to: email,
-      subject: subject,
-      template: './otp',
-      context: {
-        email: email, 
-        otp: otp,
-      },
-    }).catch((error) => {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: subject,
+        template: './otp',
+        context: {
+          email: email,
+          otp: otp,
+        },
+      });
+      console.log('Email dang duoc gui den: ' + email);
+      return new ApiResponse(true, `OTP đang được gửi tới email ${email}`);
+    } catch (error) {
       console.error(`[EmailService] Lỗi khi gửi email tới ${email}:`, error);
-      throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'SERVER_ERROR', 'Lỗi khi gửi email');
-    });
-
-    console.log('Email dang duoc gui den: ' + email);
-    return new ApiResponse(true, `OTP đang được gửi tới email ${email}`);
+      throw new CustomException(HttpStatus.BAD_REQUEST, 'EMAIL_SEND_FAILED', 'Không thể gửi email OTP. Vui lòng kiểm tra lại địa chỉ email.');
+    }
   }
 }

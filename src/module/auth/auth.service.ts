@@ -257,8 +257,40 @@ export class AuthService {
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
-    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong')
-    return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
+
+    // Generate Tokens to auto-login
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const accessToken = this.jwtService.sign(payload);
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
+      expiresIn: '360d',
+    });
+
+    // Save Refresh token in db
+    const expiresAt = new Date(Date.now() + 360 * 24 * 60 * 60 * 1000);
+
+    await this.userTokenRepository.save({
+      userId: user.id,
+      refreshToken: refreshToken,
+      expiresAt: expiresAt,
+      isRevoked: false,
+    });
+
+    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong + auto login');
+    return new ApiResponse(true, 'Cập nhật thông tin thành công', {
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user.id,
+        email: user.email,
+        status: user.status,
+      },
+    });
   }
 
   // Logout

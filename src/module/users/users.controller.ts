@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/require-await */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 /* eslint-disable prettier/prettier */
 import {
   Controller,
@@ -46,6 +46,16 @@ export class UsersController {
     const parsedRadius = radius ? parseFloat(radius) : 100;
 
     return this.usersService.getNearbyUsers(userId, parsedLat, parsedLng, parsedRadius);
+  }
+
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  async searchUsers(
+    @Request() req: any,
+    @Query('q') q: string,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.searchUsers(q, userId);
   }
 
   @Put('me')

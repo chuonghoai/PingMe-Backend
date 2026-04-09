@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module, forwardRef } from '@nestjs/common';
 import { UsersService } from './users.service';

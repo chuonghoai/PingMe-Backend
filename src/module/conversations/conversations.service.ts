@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConversationRepository } from './repository/conversation.repository';
@@ -13,7 +12,7 @@ export class ConversationService {
   constructor(
     private conversationRepo: ConversationRepository,
     private participantRepo: ConversationParticipantRepository,
-  ) {}
+  ) { }
 
   // Get conversation list
   async getMyConversations(userId: string): Promise<ApiResponse<any>> {
@@ -87,9 +86,9 @@ export class ConversationService {
       return this.participantRepo.create({
         conversationId: savedConv.id,
         userId: id,
-        role: id === userId && dto.type === EConversationType.GROUP ? 
-              EConversationParticipantRole.ADMIN : 
-              EConversationParticipantRole.MEMBER,
+        role: id === userId && dto.type === EConversationType.GROUP ?
+          EConversationParticipantRole.ADMIN :
+          EConversationParticipantRole.MEMBER,
       });
     });
 
@@ -116,7 +115,7 @@ export class ConversationService {
   // Delete conversation by admin
   async deleteConversation(userId: string, conversationId: string): Promise<ApiResponse<any>> {
     const conv = await this.conversationRepo.findOne({ where: { id: conversationId } });
-    
+
     if (!conv) {
       throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Không tìm thấy hội thoại');
     }
@@ -135,7 +134,18 @@ export class ConversationService {
     }
 
     const participants = await query.getMany();
-    
+
     return participants.map(p => p.userId);
+  }
+
+  async resetUnreadCount(conversationId: string, userId: string): Promise<void> {
+    const participant = await this.participantRepo.findOne({
+      where: { conversationId: conversationId, userId: userId }
+    });
+
+    if (participant) {
+      participant.unreadCount = 0;
+      await this.participantRepo.save(participant);
+    }
   }
 }

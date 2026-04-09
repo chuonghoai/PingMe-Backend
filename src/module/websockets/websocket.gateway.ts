@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -21,6 +20,8 @@ import { ENV_VARS } from 'src/constants/env.constants';
 import { WebsocketsService } from './websockets.service';
 import { ConversationService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
+import { UsersService } from '../users/users.service';
+import { FriendsService } from '../friends/friends.service';
 import { Throttle } from '@nestjs/throttler';
 
 @WebSocketGateway({ cors: { origin: '*' } })
@@ -34,7 +35,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private websocketsService: WebsocketsService,
     private messagesService: MessagesService,
     private conversationService: ConversationService,
-  ) {}
+    private usersService: UsersService,
+    private friendsService: FriendsService,
+  ) { }
 
   // Connect websocket
   async handleConnection(client: Socket) {
@@ -90,7 +93,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: { conversationId: string; isTyping: boolean },
   ) {
     const senderId = client.data.userId;
-    // eslint-disable-next-line prettier/prettier
+     
     const receiverIds = await this.conversationService.getParticipantIds(payload.conversationId, senderId);
     receiverIds.forEach((receiverId) => {
       const socketId = this.websocketsService.getSocketId(receiverId);
@@ -109,7 +112,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @Throttle({ default: { limit: 10, ttl: 1000 } })
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() 
+    @MessageBody()
     payload: {
       conversationId: string;
       content?: string;
@@ -146,6 +149,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  // Mark read message
+  @SubscribeMessage('mark_read')
+  async handleMarkRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId: string }
+  ) {
+    // Tìm userId từ socket id
+    const userId = this.websocketsService.getUserIdBySocketId(client.id);
+    if (!userId) return;
+
+    // Reset unreadCount về 0
+    await this.conversationService.resetUnreadCount(payload.conversationId, userId);
+  }
+
   // Revoke message
   @SubscribeMessage('revoke_message')
   @Throttle({ default: { limit: 10, ttl: 1000 } })
@@ -177,4 +194,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
   }
+
+  // Update location & broadcast to friends
+  @SubscribeMessage('update_location')
+  @Throttle({ default: { limit: 5, ttl: 5000 } })
+  async handleUpdateLocation(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { lat: number; lng: number },
+  ) {
+    const userId = client.data.userId;
+    if (!userId || payload.lat == null || payload.lng == null) return;
+
+    // Save location to DB & get user object
+    const user = await this.usersService.updateLocation(userId, payload.lat, payload.lng);
+
+    // Broadcast to online friends
+    const friendIds = await this.friendsService.getFriendIds(userId);
+    friendIds.forEach((friendId) => {
+      const socketId = this.websocketsService.getSocketId(friendId);
+      if (socketId) {
+        this.server.to(socketId).emit('friend_location_update', {
+          userId,
+          lat: payload.lat,
+          lng: payload.lng,
+          avatarUrl: user.avatarUrl || '',
+          updatedAt: new Date(),
+        });
+      }
+    });
+  }
 }
+

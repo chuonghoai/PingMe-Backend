@@ -1,12 +1,22 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UserRepository } from '../users/users.repository';
 
 @Injectable()
-export class WebsocketsService {
+export class WebsocketsService implements OnModuleInit {
   private connectedUsers = new Map<string, string>();
 
   constructor(private userRepository: UserRepository) {}
+
+  // Reset all users to offline when server starts (clear stale data)
+  async onModuleInit() {
+    try {
+      await this.userRepository.update({ isOnline: true }, { isOnline: false });
+      console.log('[WebSocket] Reset all users to offline on server start');
+    } catch (error) {
+      console.error('[WebSocket] Error resetting online users:', error);
+    }
+  }
 
   // Handle user online
   async handleUserOnline(userId: string, socketId: string): Promise<void> {
