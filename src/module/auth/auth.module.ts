@@ -13,6 +13,8 @@ import { User } from '../users/entities/user.entity';
 import { EmailModule } from '../email/email.module';
 import { UsersModule } from '../users/users.module';
 import { UserToken } from './entities/user-token.entity';
+import { AdminAuthService } from './admin-auth.service';
+import { AdminAuthController } from './admin-auth.controller';
 
 @Module({
   imports: [
@@ -30,8 +32,8 @@ import { UserToken } from './entities/user-token.entity';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy, AdminAuthService],
+  controllers: [AuthController, AdminAuthController],
+  exports: [AuthService, JwtModule, AdminAuthService],
 })
 export class AuthModule {}

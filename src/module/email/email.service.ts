@@ -5,6 +5,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { CustomException } from '../../core/exceptions/custom.exception';
+import { OtpPurpose } from './enums/otp-purpose.enum';
 
 @Injectable()
 export class EmailService {
@@ -13,11 +14,11 @@ export class EmailService {
     private readonly emailRepository: EmailRepository,
   ) {}
 
-  async sendOtp(email: string, subject: string): Promise<ApiResponse<any>> {
+  async sendOtp(email: string, subject: string, purpose?: OtpPurpose): Promise<ApiResponse<any>> {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expirationTime = new Date(Date.now() + 10 * 60000);
 
-    await this.emailRepository.createAndSaveOtp(email, otp, expirationTime);
+    await this.emailRepository.createAndSaveOtp(email, otp, expirationTime, purpose);
 
     this.mailerService.sendMail({
       to: email,
@@ -28,8 +29,8 @@ export class EmailService {
         otp: otp,
       },
     }).catch((error) => {
-      throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'SERVER_ERROR', 'Lỗi khi gửi email');
       console.error(`[EmailService] Lỗi khi gửi email tới ${email}:`, error);
+      throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, 'SERVER_ERROR', 'Lỗi khi gửi email');
     });
 
     console.log('Email dang duoc gui den: ' + email);

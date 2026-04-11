@@ -6,14 +6,15 @@ import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
 import { UserRepository } from './users.repository';
 import { WebsocketsModule } from '../websockets/websockets.module';
+import { AdminService } from './admin.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     forwardRef(() => WebsocketsModule),
   ],
-  providers: [UsersService, UserRepository],
+  providers: [UsersService, UserRepository, AdminService],
   controllers: [UsersController],
-  exports: [UsersService, UserRepository],
+  exports: [UsersService, UserRepository, AdminService],
 })
-export class UsersModule {}
+export class UsersModule { }

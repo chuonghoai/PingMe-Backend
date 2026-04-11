@@ -4,7 +4,7 @@ import { EmailService } from './../email/email.service';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
- 
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, HttpStatus, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -33,7 +33,7 @@ export class AuthService {
     private emailRepository: EmailRepository,
     @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   // LOGIN
   // Token contain: userId, email, role
@@ -42,9 +42,9 @@ export class AuthService {
 
     // Find user by email
     const user = await this.userRepository.createQueryBuilder('user')
-                                          .where('user.email = :email', { email })
-                                          .addSelect('user.password')
-                                          .getOne();
+      .where('user.email = :email', { email })
+      .addSelect('user.password')
+      .getOne();
 
     if (!user) {
       throw new CustomException(
@@ -136,8 +136,8 @@ export class AuthService {
       });
 
       // Check refresh token
-      const tokenRecord = await this.userTokenRepository.findOne({ 
-        where: { refreshToken: refreshToken } 
+      const tokenRecord = await this.userTokenRepository.findOne({
+        where: { refreshToken: refreshToken }
       });
       if (!tokenRecord || tokenRecord.isRevoked) {
         throw new CustomException(HttpStatus.UNAUTHORIZED, 'TOKEN_REVOKED', 'Phiên đăng nhập không hợp lệ');
@@ -183,7 +183,7 @@ export class AuthService {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       });
-      
+
     } catch (error) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
@@ -202,7 +202,7 @@ export class AuthService {
       throw new CustomException(HttpStatus.CONFLICT, 'EMAIL_EXISTS', 'Email đã được sử dụng');
     }
 
-    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    const latestOtp = await this.emailRepository.findLatestOtp(email);
     if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
       throw new CustomException(
         HttpStatus.BAD_REQUEST,
@@ -222,10 +222,10 @@ export class AuthService {
 
     latestOtp.isUsed = true;
     await this.emailRepository.save(latestOtp);
-    
+
     console.log('Dang ky thanh cong');
     return new ApiResponse(
-      true, 
+      true,
       'Đăng ký thành công.',
       {
         userId: newUser.id,
@@ -253,7 +253,7 @@ export class AuthService {
     user.dob = new Date(dob);
     const encodedName = encodeURIComponent(fullname);
     user.avatarUrl = `https://ui-avatars.com/api/?name=${encodedName}&background=random&color=fff&size=256&bold=true`;
-    
+
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
@@ -306,7 +306,7 @@ export class AuthService {
     }
 
     // Check OTP
-    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    const latestOtp = await this.emailRepository.findLatestOtp(email);
     if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_OTP', 'Mã OTP không hợp lệ hoặc đã hết hạn');
     }
