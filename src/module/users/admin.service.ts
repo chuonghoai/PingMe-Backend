@@ -16,11 +16,12 @@ export class AdminService implements OnModuleInit {
     }
 
     private async seedDefaultAdmin() {
-        const adminEmail = 'manggia098@gmail.com';
+        const adminEmail = process.env.ADMIN_MAIL || 'manggia098@gmail.com';
         const existingAdmin = await this.userRepository.findByEmail(adminEmail);
 
         if (!existingAdmin) {
-            const hashedPassword = await bcrypt.hash('Admin@123456', 10);
+            const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+            const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
             const adminUser = this.userRepository.create({
                 fullname: 'System Administrator',
@@ -49,7 +50,7 @@ export class AdminService implements OnModuleInit {
             });
 
             await this.userRepository.save(adminUser);
-            this.logger.log(`Đã tạo tài khoản Admin mặc định: ${adminEmail} | Mật khẩu: Admin@123456`);
+            this.logger.log(`Đã tạo tài khoản Admin mặc định: ${adminEmail} | Mật khẩu: ${adminPassword}`);
         } else {
             this.logger.log('Tài khoản Admin đã tồn tại, bỏ qua bước khởi tạo.');
         }
