@@ -7,6 +7,7 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './users.repository';
 import { WebsocketsModule } from '../websockets/websockets.module';
 import { AdminService } from './admin.service';
+import { AdminController } from './admin.controller';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { AdminService } from './admin.service';
     forwardRef(() => WebsocketsModule),
   ],
   providers: [UsersService, UserRepository, AdminService],
-  controllers: [UsersController],
+  controllers: [UsersController, AdminController],
   exports: [UsersService, UserRepository, AdminService],
 })
 export class UsersModule { }

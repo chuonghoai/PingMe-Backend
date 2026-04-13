@@ -60,7 +60,7 @@ export class AdminService implements OnModuleInit {
 
     // Get all users in database
     async getAllUsers() {
-        const users = this.userRepository.find();
+        const users = await this.userRepository.find();
         return new ApiResponse(true, 'Lấy danh sách người dùng thành công', users);
     }
 
