@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { HttpStatus, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "./users.repository";
 import { EUserActivityType, EUserGender, EUserRole, EUserStatus } from "./enums/user.enum";
 import * as bcrypt from 'bcrypt';
+import { CustomException } from "src/core/exceptions/custom.exception";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -15,6 +16,7 @@ export class AdminService implements OnModuleInit {
         await this.seedDefaultAdmin();
     }
 
+    // Create default admin account
     private async seedDefaultAdmin() {
         const adminEmail = process.env.ADMIN_MAIL || 'manggia098@gmail.com';
         const existingAdmin = await this.userRepository.findByEmail(adminEmail);
@@ -54,5 +56,10 @@ export class AdminService implements OnModuleInit {
         } else {
             this.logger.log('Tài khoản Admin đã tồn tại, bỏ qua bước khởi tạo.');
         }
+    }
+
+    // Get all users in database
+    async getAllUsers() {
+        return this.userRepository.find();
     }
 }
