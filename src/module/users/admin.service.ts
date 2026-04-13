@@ -65,13 +65,11 @@ export class AdminService implements OnModuleInit {
     }
 
     async getStats() {
-        const totalUsers = this.userRepository.count();
-        const totalOnlines = this.userRepository.count({
-            where: { isOnline: true }
-        });
-        const totalLocks = this.userRepository.count({
-            where: { status: EUserStatus.LOCKED }
-        })
+        const [totalUsers, totalOnlines, totalLocks] = await Promise.all([
+            this.userRepository.count(),
+            this.userRepository.count({ where: { isOnline: true } }),
+            this.userRepository.count({ where: { status: EUserStatus.LOCKED } }),
+        ]);
         return new ApiResponse(true, 'Lấy thống kê thành công', {
             totalUsers,
             totalOnlines,
