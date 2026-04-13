@@ -11,9 +11,17 @@ import { RolesGuard } from "src/core/security/roles/roles.guard";
 export class AdminController {
     constructor(private readonly adminService: AdminService) { }
 
+    // Get all user
     @Get('users')
     @HttpCode(HttpStatus.OK)
     async getAllUsers() {
         return this.adminService.getAllUsers();
+    }
+
+    // Get stats: total users, onlines, locks
+    @Get('stats')
+    @HttpCode(HttpStatus.OK)
+    async getStats() {
+        return this.adminService.getStats();
     }
 }

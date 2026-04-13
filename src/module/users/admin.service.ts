@@ -2,7 +2,7 @@ import { HttpStatus, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "./users.repository";
 import { EUserActivityType, EUserGender, EUserRole, EUserStatus } from "./enums/user.enum";
 import * as bcrypt from 'bcrypt';
-import { CustomException } from "src/core/exceptions/custom.exception";
+import { ApiResponse } from "src/core/dto/ApiResponse.dto";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -60,6 +60,22 @@ export class AdminService implements OnModuleInit {
 
     // Get all users in database
     async getAllUsers() {
-        return this.userRepository.find();
+        const users = this.userRepository.find();
+        return new ApiResponse(true, 'Lấy danh sách người dùng thành công', users);
+    }
+
+    async getStats() {
+        const totalUsers = this.userRepository.count();
+        const totalOnlines = this.userRepository.count({
+            where: { isOnline: true }
+        });
+        const totalLocks = this.userRepository.count({
+            where: { status: EUserStatus.LOCKED }
+        })
+        return new ApiResponse(true, 'Lấy thống kê thành công', {
+            totalUsers,
+            totalOnlines,
+            totalLocks
+        })
     }
 }
