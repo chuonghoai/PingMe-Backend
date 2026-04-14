@@ -15,6 +15,7 @@ import {
   Body,
   Query,
   Patch,
+  Param,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
@@ -63,5 +64,11 @@ export class UsersController {
   ) {
     const userId = req.user.userId;
     return this.usersService.toggleLocationShare(userId, dto.action);
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async getUserById(@Param('id') id: string) {
+    return this.usersService.getUserById(id);
   }
 }

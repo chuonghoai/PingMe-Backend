@@ -25,6 +25,15 @@ export class UsersService {
     return this.userRepository.findById(userId);
   }
 
+  // Get user by id
+  async getUserById(id: string) {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
+    }
+    return new ApiResponse(true, 'Lấy thông tin người dùng thành công', user);
+  }
+
   // find list users by id
   async findUsersByIds(userIds: string[]) {
     if (!userIds || userIds.length === 0) return [];
