@@ -3,6 +3,7 @@ import { UserRepository } from "./users.repository";
 import { EUserActivityType, EUserGender, EUserRole, EUserStatus } from "./enums/user.enum";
 import * as bcrypt from 'bcrypt';
 import { ApiResponse } from "src/core/dto/ApiResponse.dto";
+import { ConversationParticipantRepository } from "../conversations/repository/conversation-participant.repository";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class AdminService implements OnModuleInit {
 
     constructor(
         private readonly userRepository: UserRepository,
+        private readonly participantRepo: ConversationParticipantRepository,
     ) { }
 
     async onModuleInit() {
@@ -64,16 +66,23 @@ export class AdminService implements OnModuleInit {
         return new ApiResponse(true, 'Lấy danh sách người dùng thành công', users);
     }
 
-    async getStats() {
-        const [totalUsers, totalOnlines, totalLocks] = await Promise.all([
+    async getStats(adminId: string) {
+        const [totalUsers, totalOnlines, totalLocks, unreadResult] = await Promise.all([
             this.userRepository.count(),
             this.userRepository.count({ where: { isOnline: true } }),
             this.userRepository.count({ where: { status: EUserStatus.LOCKED } }),
+            this.participantRepo.createQueryBuilder('cp')
+                .select('SUM(cp.unreadCount)', 'total')
+                .where('cp.userId = :adminId', { adminId })
+                .getRawOne()
         ]);
+        const totalUnreadCount = unreadResult?.total ? parseInt(unreadResult.total, 10) : 0;
+
         return new ApiResponse(true, 'Lấy thống kê thành công', {
             totalUsers,
             totalOnlines,
-            totalLocks
+            totalLocks,
+            totalUnreadCount
         })
     }
 }

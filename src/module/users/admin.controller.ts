@@ -21,7 +21,8 @@ export class AdminController {
     // Get stats: total users, onlines, locks
     @Get('stats')
     @HttpCode(HttpStatus.OK)
-    async getStats() {
-        return this.adminService.getStats();
+    async getStats(@Request() req: any) {
+        const adminId = req.user.userId;
+        return this.adminService.getStats(adminId);
     }
 }
