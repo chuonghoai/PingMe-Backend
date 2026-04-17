@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, UseGuards, Request, Post, Body, Param, Query } from "@nestjs/common";
+import { Controller, Get, HttpCode, HttpStatus, UseGuards, Request, Post, Body, Param, Query, Patch } from "@nestjs/common";
 import { JwtAuthGuard } from "src/core/security/jwt/jwt-auth.guard";
 import { AdminService } from "./admin.service";
 import { Roles } from "src/core/security/roles/roles.decorator";
@@ -27,12 +27,11 @@ export class AdminController {
     }
 
     // Toggle lock user account
-    @Post(':id/toggle/lock')
+    @Patch('users/:id/toggle/lock')
     @HttpCode(HttpStatus.OK)
     async toggleLockUser(
         @Param('id') id: string,
-        @Query('lock') lock: boolean,
     ) {
-        return this.adminService.toogleLockUser(id, lock);
+        return this.adminService.toogleLockUser(id);
     }
 }

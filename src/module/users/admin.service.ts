@@ -88,13 +88,14 @@ export class AdminService implements OnModuleInit {
     }
 
     // Lock user
-    async toogleLockUser(userId: string, locked: boolean) {
+    async toogleLockUser(userId: string) {
         const user = await this.userRepository.findById(userId);
         if (!user) {
             throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
         }
-        user.status = locked ? EUserStatus.LOCKED : EUserStatus.ACTIVE;
+        user.status = user.status === EUserStatus.LOCKED ? EUserStatus.ACTIVE : EUserStatus.LOCKED;
+        const messageRes = user.status === EUserStatus.LOCKED ? 'Khóa tài khoản thành công' : 'Mở khóa tài khoản thành công';
         await this.userRepository.save(user);
-        return new ApiResponse(true, 'Khóa tài khoản thành công', null);
+        return new ApiResponse(true, messageRes, null);
     }
 }
