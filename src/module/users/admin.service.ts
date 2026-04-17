@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { ApiResponse } from "src/core/dto/ApiResponse.dto";
 import { ConversationParticipantRepository } from "../conversations/repository/conversation-participant.repository";
 import { CustomException } from "src/core/exceptions/custom.exception";
+import { ENV_VARS } from "src/constants/env.constants";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -98,4 +99,19 @@ export class AdminService implements OnModuleInit {
         await this.userRepository.save(user);
         return new ApiResponse(true, messageRes, null);
     }
+
+    // Change password
+    async changePassword(oldPassword: string, newPassword: string) {
+        const admin = await this.userRepository.findByEmail(ENV_VARS.ADMIN_MAIL);
+        if (!admin) {
+            throw new CustomException(HttpStatus.NOT_FOUND, 'ADMIN_NOT_FOUND', 'Không tìm thấy admin');
+        }
+        const isMatch = await bcrypt.compare(oldPassword, admin.password);
+        if (!isMatch) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, 'WRONG_PASSWORD', 'Sai mật khẩu');
+        }
+        admin.password = await bcrypt.hash(newPassword, 10);
+        await this.userRepository.save(admin);
+        return new ApiResponse(true, 'Đổi mật khẩu thành công', null);
+    }        
 }

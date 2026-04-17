@@ -34,4 +34,13 @@ export class AdminController {
     ) {
         return this.adminService.toogleLockUser(id);
     }
+
+    // Change password
+    @Patch('change-password')
+    @HttpCode(HttpStatus.OK)
+    async changePassword(
+        @Body() body: { oldPassword: string, newPassword: string },
+    ) {
+        return this.adminService.changePassword(body.oldPassword, body.newPassword);
+    }
 }
