@@ -4,6 +4,7 @@ import { EUserActivityType, EUserGender, EUserRole, EUserStatus } from "./enums/
 import * as bcrypt from 'bcrypt';
 import { ApiResponse } from "src/core/dto/ApiResponse.dto";
 import { ConversationParticipantRepository } from "../conversations/repository/conversation-participant.repository";
+import { CustomException } from "src/core/exceptions/custom.exception";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -84,5 +85,16 @@ export class AdminService implements OnModuleInit {
             totalLocks,
             totalUnreadCount
         })
+    }
+
+    // Lock user
+    async toogleLockUser(userId: string, locked: boolean) {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
+        }
+        user.status = locked ? EUserStatus.LOCKED : EUserStatus.ACTIVE;
+        await this.userRepository.save(user);
+        return new ApiResponse(true, 'Khóa tài khoản thành công', null);
     }
 }
