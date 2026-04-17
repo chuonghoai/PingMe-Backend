@@ -6,6 +6,7 @@ import { ApiResponse } from "src/core/dto/ApiResponse.dto";
 import { ConversationParticipantRepository } from "../conversations/repository/conversation-participant.repository";
 import { CustomException } from "src/core/exceptions/custom.exception";
 import { ENV_VARS } from "src/constants/env.constants";
+import { ChangePasswordDto } from "./dto/change-password-request.dto";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -100,18 +101,24 @@ export class AdminService implements OnModuleInit {
         return new ApiResponse(true, messageRes, null);
     }
 
-    // Change password
-    async changePassword(oldPassword: string, newPassword: string) {
-        const admin = await this.userRepository.findByEmail(ENV_VARS.ADMIN_MAIL);
-        if (!admin) {
-            throw new CustomException(HttpStatus.NOT_FOUND, 'ADMIN_NOT_FOUND', 'Không tìm thấy admin');
+    async changePassword(userId: string, dto: ChangePasswordDto): Promise<ApiResponse<any>> {
+        const user = await this.userRepository.createQueryBuilder('user')
+            .where('user.id = :userId', { userId })
+            .addSelect('user.password')
+            .getOne();
+
+        if (!user) {
+            throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Người dùng không tồn tại');
         }
-        const isMatch = await bcrypt.compare(oldPassword, admin.password);
+
+        const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
         if (!isMatch) {
-            throw new CustomException(HttpStatus.UNAUTHORIZED, 'WRONG_PASSWORD', 'Sai mật khẩu');
+            throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_PASSWORD', 'Mật khẩu cũ không chính xác');
         }
-        admin.password = await bcrypt.hash(newPassword, 10);
-        await this.userRepository.save(admin);
+
+        user.password = await bcrypt.hash(dto.newPassword, 10);
+        await this.userRepository.save(user);
+
         return new ApiResponse(true, 'Đổi mật khẩu thành công', null);
-    }        
+    }
 }

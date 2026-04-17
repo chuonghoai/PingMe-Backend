@@ -4,6 +4,7 @@ import { AdminService } from "./admin.service";
 import { Roles } from "src/core/security/roles/roles.decorator";
 import { EUserRole } from "./enums/user.enum";
 import { RolesGuard } from "src/core/security/roles/roles.guard";
+import { ChangePasswordDto } from "./dto/change-password-request.dto";
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -38,9 +39,8 @@ export class AdminController {
     // Change password
     @Patch('change-password')
     @HttpCode(HttpStatus.OK)
-    async changePassword(
-        @Body() body: { oldPassword: string, newPassword: string },
-    ) {
-        return this.adminService.changePassword(body.oldPassword, body.newPassword);
+    async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+        const userId = req.user.userId;
+        return this.adminService.changePassword(userId, dto);
     }
 }
