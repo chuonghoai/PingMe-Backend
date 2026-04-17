@@ -131,13 +131,10 @@ export class AdminAuthService {
 
     async resendOtp(tempToken: string): Promise<ApiResponse<any>> {
         try {
-            // Bỏ qua thời gian hết hạn (ignoreExpiration) để lỡ người dùng tốn >10p mới ấn gửi lại thì hệ thống vẫn cho phép lấy lại email
             const payload = this.jwtService.verify(tempToken, { ignoreExpiration: true });
 
-            // Gửi lại OTP mới
             await this.emailService.sendOtp(payload.email, 'Mã xác thực OTP đăng nhập Admin - PingMe');
 
-            // Cấp lại một tempToken mới tinh có hạn 10 phút để thay thế token cũ đã/sắp hết hạn
             const newTempToken = this.jwtService.sign({
                 userId: payload.userId,
                 email: payload.email,
@@ -154,15 +151,12 @@ export class AdminAuthService {
     async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<ApiResponse<any>> {
         const user = await this.userRepository.findByEmail(forgotPasswordDto.email);
         if (user) {
-            // Gửi OTP với purpose RESET_PASSWORD
             await this.emailService.sendOtp(user.email, 'Mã khôi phục mật khẩu - PingMe', OtpPurpose.RESET_PASSWORD);
         }
-        // Luôn trả về thành công để tránh bị dò quét email
         return new ApiResponse(true, 'Nếu email tồn tại, mã khôi phục đã được gửi đi', null);
     }
 
     async verifyResetPasswordOtp(dto: any): Promise<ApiResponse<any>> {
-        // Xác thực OTP
         await this.verifyOtpCore(dto.email, dto.otp, OtpPurpose.RESET_PASSWORD);
 
         const user = await this.userRepository.findByEmail(dto.email);
@@ -174,7 +168,6 @@ export class AdminAuthService {
 
     async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<ApiResponse<any>> {
         try {
-            // Giải mã resetToken
             const payload = this.jwtService.verify(resetPasswordDto.resetToken);
 
             if (payload.purpose !== 'RESET_PASSWORD_FLOW') {
@@ -184,11 +177,9 @@ export class AdminAuthService {
             const user = await this.userRepository.findById(payload.userId);
             if (!user) throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Tài khoản không tồn tại');
 
-            // Đổi mật khẩu
             user.password = await bcrypt.hash(resetPasswordDto.newPassword, 10);
             await this.userRepository.save(user);
 
-            // Đăng xuất tự động tất cả các thiết bị cũ bằng cách Revoke toàn bộ token cũ
             await this.userTokenRepository.update({ userId: user.id }, { isRevoked: true });
 
             return new ApiResponse(true, 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.', null);

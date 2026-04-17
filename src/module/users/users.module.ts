@@ -7,14 +7,17 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './users.repository';
 import { WebsocketsModule } from '../websockets/websockets.module';
 import { AdminService } from './admin.service';
+import { AdminController } from './admin.controller';
+import { ConversationModule } from '../conversations/conversations.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     forwardRef(() => WebsocketsModule),
+    ConversationModule,
   ],
   providers: [UsersService, UserRepository, AdminService],
-  controllers: [UsersController],
+  controllers: [UsersController, AdminController],
   exports: [UsersService, UserRepository, AdminService],
 })
 export class UsersModule { }
