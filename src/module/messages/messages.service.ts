@@ -19,7 +19,7 @@ export class MessagesService {
     private conversationRepo: ConversationRepository,
     private participantRepo: ConversationParticipantRepository,
     private dataSource: DataSource,
-  ) { }
+  ) {}
 
   // Save new message
   async saveNewMessage(senderId: string, payload: any): Promise<any> {

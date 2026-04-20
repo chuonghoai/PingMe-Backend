@@ -5,6 +5,7 @@ import { UsersModule } from '../users/users.module';
 import { ConversationModule } from '../conversations/conversations.module';
 import { MessagesModule } from '../messages/messages.module';
 import { AuthModule } from '../auth/auth.module';
+import { FriendsModule } from '../friends/friends.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthModule } from '../auth/auth.module';
     ConversationModule,
     MessagesModule,
     forwardRef(() => AuthModule),
+    forwardRef(() => FriendsModule),
   ],
   providers: [ChatGateway, WebsocketsService],
   exports: [WebsocketsService],

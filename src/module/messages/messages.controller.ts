@@ -18,7 +18,7 @@ import { Throttle } from '@nestjs/throttler';
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) { }
+  constructor(private readonly messagesService: MessagesService) {}
 
   @Get(':conversationId')
   @HttpCode(HttpStatus.OK)

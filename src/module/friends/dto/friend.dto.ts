@@ -1,10 +1,10 @@
 /* eslint-disable prettier/prettier */
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { FriendPopupStatus, FriendRequestAction, FriendStatus } from '../enums/friend-status.enum';
 
 export class SendFriendRequestDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   senderId: string;
 
   @IsString()

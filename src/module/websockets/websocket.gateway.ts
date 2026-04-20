@@ -21,16 +21,9 @@ import { ENV_VARS } from 'src/constants/env.constants';
 import { WebsocketsService } from './websockets.service';
 import { ConversationService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
+import { UsersService } from '../users/users.service';
+import { FriendsService } from '../friends/friends.service';
 import { Throttle } from '@nestjs/throttler';
-
-/*  Function:
-    - Connect
-    - Disconnect
-    - Typing
-    - Send message
-    - Mark read message
-    - Revoke message
-*/
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -43,6 +36,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private websocketsService: WebsocketsService,
     private messagesService: MessagesService,
     private conversationService: ConversationService,
+    private usersService: UsersService,
+    private friendsService: FriendsService,
   ) { }
 
   // Connect websocket
@@ -237,4 +232,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
   }
+
+  // Update location & broadcast to friends
+  @SubscribeMessage('update_location')
+  @Throttle({ default: { limit: 5, ttl: 5000 } })
+  async handleUpdateLocation(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { lat: number; lng: number },
+  ) {
+    const userId = client.data.userId;
+    if (!userId || payload.lat == null || payload.lng == null) return;
+
+    // Save location to DB & get user object
+    const user = await this.usersService.updateLocation(userId, payload.lat, payload.lng);
+
+    // Broadcast to online friends
+    const friendIds = await this.friendsService.getFriendIds(userId);
+    friendIds.forEach((friendId) => {
+      const socketId = this.websocketsService.getSocketId(friendId);
+      if (socketId) {
+        this.server.to(socketId).emit('friend_location_update', {
+          userId,
+          lat: payload.lat,
+          lng: payload.lng,
+          avatarUrl: user.avatarUrl || '',
+          updatedAt: new Date(),
+        });
+      }
+    });
+  }
 }
+

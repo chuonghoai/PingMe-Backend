@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FriendsService } from './friends.service';
 import { FriendsController } from './friends.controller';
@@ -7,7 +7,10 @@ import { User } from '../users/entities/user.entity';
 import { WebsocketsModule } from '../websockets/websockets.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Friend, User]), WebsocketsModule],
+  imports: [
+    TypeOrmModule.forFeature([Friend, User]),
+    forwardRef(() => WebsocketsModule),
+  ],
   providers: [FriendsService],
   controllers: [FriendsController],
   exports: [FriendsService],

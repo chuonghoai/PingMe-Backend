@@ -49,6 +49,16 @@ export class UsersController {
     return this.usersService.getNearbyUsers(userId, parsedLat, parsedLng, parsedRadius);
   }
 
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  async searchUsers(
+    @Request() req: any,
+    @Query('q') q: string,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.searchUsers(q, userId);
+  }
+
   @Put('me')
   @HttpCode(HttpStatus.OK)
   async updateUser(@Request() req: any, @Body() updateUserRequest: UpdateUserRequest) {

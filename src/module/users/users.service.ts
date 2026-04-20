@@ -9,7 +9,7 @@ import { UserRepository } from './users.repository';
 import { CustomException } from 'src/core/exceptions/custom.exception';
 import { NearbyUserResponseDto, UpdateUserRequest } from './dto/user-request.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
-import { In, IsNull, Not } from 'typeorm';
+import { In, IsNull, Like, Not } from 'typeorm';
 import { calculateDistance } from 'src/utils/calculate.util';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class UsersService {
     private userRepository: UserRepository,
     @Inject(forwardRef(() => WebsocketsService))
     private readonly websocketsService: WebsocketsService
-  ) {}
+  ) { }
 
   // find by id
   async findById(userId: string) {
@@ -81,8 +81,8 @@ export class UsersService {
 
   // Get user nearby raduis 
   async getNearbyUsers(
-    userId: string, 
-    lat: number, lng: number, 
+    userId: string,
+    lat: number, lng: number,
     radius: number
   ): Promise<ApiResponse<NearbyUserResponseDto[]>> {
     await this.userRepository.update(userId, { lat, lng, locationUpdatedAt: new Date() });
@@ -90,6 +90,9 @@ export class UsersService {
     // Get user online
     const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
     const otherOnlineUsers = onlineUsers.filter(id => id !== userId);
+    console.log(`[Nearby] User ${userId} at (${lat}, ${lng}), radius=${radius}m`);
+    console.log(`[Nearby] Online users: ${onlineUsers.length}, other online: ${otherOnlineUsers.length}`);
+
     if (otherOnlineUsers.length === 0) {
       return new ApiResponse(true, 'Không có ai đang online ở gần', []);
     }
@@ -102,12 +105,14 @@ export class UsersService {
         lng: Not(IsNull()),
       },
     });
+    console.log(`[Nearby] Users with coordinates: ${users.length}`);
 
     // Compute distance
     const nearbyUsers: NearbyUserResponseDto[] = [];
     for (const user of users) {
       const distance = calculateDistance(lat, lng, user.lat, user.lng);
-      
+      console.log(`[Nearby] User ${user.fullname} at (${user.lat}, ${user.lng}) -> distance=${distance}m`);
+
       if (distance <= radius) {
         nearbyUsers.push({
           userId: user.id,
@@ -123,7 +128,7 @@ export class UsersService {
   }
 
   // Update location in DB
-  async updateLocation(actorId: string, lat: number, lng: number): Promise<void> {
+  async updateLocation(actorId: string, lat: number, lng: number): Promise<any> {
     const user = await this.userRepository.findById(actorId);
     if (!user) {
       throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
@@ -133,6 +138,7 @@ export class UsersService {
     user.lng = lng;
     user.locationUpdatedAt = new Date();
     await this.userRepository.save(user);
+    return user;
   }
 
   // Start/stop share location
@@ -147,8 +153,8 @@ export class UsersService {
     user.isHideMyLocation = isHide;
     await this.userRepository.save(user);
 
-    const message = isHide 
-      ? 'Đã tắt tính năng chia sẻ vị trí' 
+    const message = isHide
+      ? 'Đã tắt tính năng chia sẻ vị trí'
       : 'Đã bật tính năng chia sẻ vị trí';
 
     return new ApiResponse(true, message, {
@@ -166,5 +172,31 @@ export class UsersService {
 
     user.statusMessage = statusMessage;
     await this.userRepository.save(user);
+  }
+
+  // Fetch suggested or search users
+  async searchUsers(query: string, currentUserId: string): Promise<ApiResponse<any>> {
+    if (!query || query.trim() === '') {
+      return new ApiResponse(true, 'Empty query', []);
+    }
+    const searchTerm = `%${query.trim()}%`;
+    const users = await this.userRepository.find({
+      where: [
+        { email: Like(searchTerm) },
+        { fullname: Like(searchTerm) },
+      ],
+      take: 20,
+    });
+
+    // Filter out current user
+    const filteredUsers = users.filter(u => u.id !== currentUserId);
+
+    const result = filteredUsers.map(u => ({
+      userId: u.id,
+      fullName: u.fullname,
+      avatarUrl: u.avatarUrl || '',
+    }));
+
+    return new ApiResponse(true, 'Search results', result);
   }
 }

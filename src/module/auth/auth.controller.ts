@@ -21,7 +21,7 @@ import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // Login
   @Throttle({ default: { limit: 2, ttl: 1000 } })

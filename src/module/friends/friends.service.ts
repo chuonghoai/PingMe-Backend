@@ -239,12 +239,14 @@ export class FriendsService {
         if (otherUser.isHideMyLocation) continue;
 
         const isOnline = onlineUsers.includes(otherUser.id);
+        if (!isOnline) continue; // Only show ONLINE friends on map
+
         friendsOnMap.push({
           userId: otherUser.id,
           avatarUrl: otherUser.avatarUrl || '',
           latitude: otherUser.lat,
           longitude: otherUser.lng,
-          onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+          onlineStatus: 'ONLINE',
         });
       }
     }

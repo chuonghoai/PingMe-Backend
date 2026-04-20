@@ -1,11 +1,10 @@
-import { EmailService } from './../email/email.service';
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+import { EmailService } from './../email/email.service';
 import { Injectable, HttpStatus, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -33,7 +32,7 @@ export class AuthService {
     private emailRepository: EmailRepository,
     @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   // LOGIN
   // Token contain: userId, email, role
@@ -183,7 +182,7 @@ export class AuthService {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       });
-
+      
     } catch (error) {
       throw new CustomException(
         HttpStatus.UNAUTHORIZED,
@@ -253,12 +252,44 @@ export class AuthService {
     user.dob = new Date(dob);
     const encodedName = encodeURIComponent(fullname);
     user.avatarUrl = `https://ui-avatars.com/api/?name=${encodedName}&background=random&color=fff&size=256&bold=true`;
-
+    
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
-    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong')
-    return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
+
+    // Generate Tokens to auto-login
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const accessToken = this.jwtService.sign(payload);
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
+      expiresIn: '360d',
+    });
+
+    // Save Refresh token in db
+    const expiresAt = new Date(Date.now() + 360 * 24 * 60 * 60 * 1000);
+
+    await this.userTokenRepository.save({
+      userId: user.id,
+      refreshToken: refreshToken,
+      expiresAt: expiresAt,
+      isRevoked: false,
+    });
+
+    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong + auto login');
+    return new ApiResponse(true, 'Cập nhật thông tin thành công', {
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user.id,
+        email: user.email,
+        status: user.status,
+      },
+    });
   }
 
   // Logout
