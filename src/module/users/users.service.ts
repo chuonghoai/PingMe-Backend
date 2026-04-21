@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
- 
- 
- 
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/require-await */
 import { forwardRef, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
 import { UserRepository } from './users.repository';
 import { CustomException } from 'src/core/exceptions/custom.exception';
@@ -10,14 +13,51 @@ import { NearbyUserResponseDto, UpdateUserRequest } from './dto/user-request.dto
 import { WebsocketsService } from '../websockets/websockets.service';
 import { Like, Not, IsNull, In } from 'typeorm';
 import { calculateDistance } from 'src/utils/calculate.util';
+import { Friend } from '../friends/entities/friend.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     private userRepository: UserRepository,
     @Inject(forwardRef(() => WebsocketsService))
-    private readonly websocketsService: WebsocketsService
+    private readonly websocketsService: WebsocketsService,
+    @InjectRepository(Friend)
+    private readonly friendRepo: Repository<Friend>,
   ) {}
+
+  // ── Helper: Get accepted friend IDs for a user (direct DB query, no circular dep) ──
+  private async getAcceptedFriendIds(userId: string): Promise<string[]> {
+    const friends = await this.friendRepo.find({
+      where: [
+        { senderId: userId, status: 'ACCEPTED' as any },
+        { targetUserId: userId, status: 'ACCEPTED' as any },
+      ],
+    });
+
+    const friendIds = friends.map(f => f.senderId === userId ? f.targetUserId : f.senderId);
+    console.log(`[Friends] getAcceptedFriendIds for ${userId}: found ${friends.length} friendships, friendIds=[${friendIds.join(', ')}]`);
+    return friendIds;
+  }
+
+  // ── Helper: Get friendship status between two users ──
+  private async getFriendshipStatus(userId: string, targetId: string): Promise<{ isFriend: boolean; status: string | null; requestId: string | null }> {
+    const friendship = await this.friendRepo.findOne({
+      where: [
+        { senderId: userId, targetUserId: targetId },
+        { senderId: targetId, targetUserId: userId },
+      ],
+    });
+
+    if (!friendship) {
+      return { isFriend: false, status: null, requestId: null };
+    }
+
+    return {
+      isFriend: friendship.status === ('ACCEPTED' as any),
+      status: friendship.status,
+      requestId: friendship.id,
+    };
+  }
 
   // find by id
   async findById(userId: string) {
@@ -69,12 +109,13 @@ export class UsersService {
     )
   }
 
+
   // Get user nearby raduis 
   async getNearbyUsers(
     userId: string, 
     lat: number, lng: number, 
     radius: number
-  ): Promise<ApiResponse<NearbyUserResponseDto[]>> {
+  ): Promise<ApiResponse<any[]>> {
     await this.userRepository.update(userId, { lat, lng, locationUpdatedAt: new Date() });
 
     // Get user online
@@ -87,6 +128,9 @@ export class UsersService {
       return new ApiResponse(true, 'Không có ai đang online ở gần', []);
     }
 
+    // Get accepted friend IDs for friendship check
+    const friendIds = await this.getAcceptedFriendIds(userId);
+
     // Get user have coordinates
     const users = await this.userRepository.find({
       where: {
@@ -98,10 +142,10 @@ export class UsersService {
     console.log(`[Nearby] Users with coordinates: ${users.length}`);
 
     // Compute distance
-    const nearbyUsers: NearbyUserResponseDto[] = [];
+    const nearbyUsers: any[] = [];
     for (const user of users) {
       const distance = calculateDistance(lat, lng, user.lat, user.lng);
-      console.log(`[Nearby] User ${user.fullname} at (${user.lat}, ${user.lng}) -> distance=${distance}m`);
+      console.log(`[Nearby] User ${user.fullname} (${user.id}) -> distance=${distance}m, isFriend=${friendIds.includes(user.id)}`);
       
       if (distance <= radius) {
         nearbyUsers.push({
@@ -109,6 +153,7 @@ export class UsersService {
           fullName: user.fullname,
           avatarUrl: user.avatarUrl || '',
           distance: `${distance}m`,
+          isFriend: friendIds.includes(user.id),
         });
       }
     }
@@ -118,7 +163,7 @@ export class UsersService {
   }
 
   // Update location in DB
-  async updateLocation(actorId: string, lat: number, lng: number): Promise<any> {
+  async updateLocation(actorId: string, lat: number, lng: number, speed?: number, battery?: number, isCharging?: boolean): Promise<any> {
     const user = await this.userRepository.findById(actorId);
     if (!user) {
       throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
@@ -126,6 +171,9 @@ export class UsersService {
 
     user.lat = lat;
     user.lng = lng;
+    if (speed !== undefined) user.speed = speed;
+    if (battery !== undefined) user.battery = battery;
+    if (isCharging !== undefined) user.isCharging = isCharging;
     user.locationUpdatedAt = new Date();
     await this.userRepository.save(user);
     return user;
@@ -181,10 +229,23 @@ export class UsersService {
     // Filter out current user
     const filteredUsers = users.filter(u => u.id !== currentUserId);
 
-    const result = filteredUsers.map(u => ({
-      userId: u.id,
-      fullName: u.fullname,
-      avatarUrl: u.avatarUrl || '',
+    // Get accepted friend IDs for friendship check
+    const friendIds = await this.getAcceptedFriendIds(currentUserId);
+
+    const result = await Promise.all(filteredUsers.map(async u => {
+      const isFriend = friendIds.includes(u.id);
+      const friendshipInfo = await this.getFriendshipStatus(currentUserId, u.id);
+      
+      console.log(`[Search] User "${u.fullname}" (${u.id}): isFriend=${isFriend}, status=${friendshipInfo.status}`);
+
+      return {
+        userId: u.id,
+        fullName: u.fullname,
+        avatarUrl: u.avatarUrl || '',
+        isFriend: isFriend,
+        friendshipStatus: friendshipInfo.status, // 'ACCEPTED' | 'PENDING' | 'REJECTED' | null
+        requestId: friendshipInfo.requestId,
+      };
     }));
 
     return new ApiResponse(true, 'Search results', result);

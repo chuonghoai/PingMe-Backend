@@ -72,4 +72,21 @@ export class WebsocketsService implements OnModuleInit {
     });
     return sockets;
   }
+
+  // Store server reference for emitting events from services
+  private server: any = null;
+
+  setServer(server: any) {
+    this.server = server;
+  }
+
+  // Emit event to specific users by userId
+  emitToUsers(userIds: string[], event: string, data: any) {
+    if (!this.server) return;
+    const sockets = this.getOnlineSockets(userIds);
+    if (sockets.length > 0) {
+      this.server.to(sockets).emit(event, data);
+    }
+  }
 }
+

@@ -6,6 +6,8 @@ import { ConversationModule } from '../conversations/conversations.module';
 import { MessagesModule } from '../messages/messages.module';
 import { AuthModule } from '../auth/auth.module';
 import { FriendsModule } from '../friends/friends.module';
+import { IntimacyModule } from '../intimacy/intimacy.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { FriendsModule } from '../friends/friends.module';
     MessagesModule,
     forwardRef(() => AuthModule),
     forwardRef(() => FriendsModule),
+    forwardRef(() => IntimacyModule),
+    forwardRef(() => NotificationsModule),
   ],
   providers: [ChatGateway, WebsocketsService],
   exports: [WebsocketsService],

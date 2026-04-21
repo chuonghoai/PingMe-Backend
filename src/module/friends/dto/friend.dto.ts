@@ -73,6 +73,7 @@ export interface FriendRequestItemDto {
 
 export interface FriendOnMapDto {
   userId: string;
+  fullName: string;
   avatarUrl: string;
   latitude: number;
   longitude: number;
@@ -87,6 +88,7 @@ export interface FriendMapPopupDto {
     avatarUrl: string;
     onlineStatus: string;
     lastActive: string;
+    mutualFriends: number;
   };
   relationship: {
     status: FriendPopupStatus | string;
@@ -104,6 +106,7 @@ export interface FriendMapPopupDto {
     statusMessage: string;
     activityType: string;
     battery: number | null;
+    isCharging: boolean;
     speed: number;
   };
   actions: {
@@ -125,6 +128,9 @@ export interface FriendMapPopupDto {
       currentExp: number;
       nextLevelExp: number;
       progressPercent: number;
+      currentStreak?: number;
+      longestStreak?: number;
+      aura?: string;
     };
   };
 }

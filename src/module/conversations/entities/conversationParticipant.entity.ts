@@ -35,6 +35,9 @@ export class ConversationParticipant {
   @Column({ default: true })
   isVisible: boolean;
 
+  @Column({ nullable: true })
+  clearedAt: Date;
+
   @CreateDateColumn()
   joinedAt: Date;
 }

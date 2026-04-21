@@ -1,5 +1,5 @@
 import { EmailRepository } from './email.repository';
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';

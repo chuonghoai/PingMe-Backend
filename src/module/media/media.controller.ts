@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
 import { Controller, Get, HttpCode, HttpStatus, UseGuards, Body, Post, Delete } from '@nestjs/common';
 import { MediaService } from './media.service';

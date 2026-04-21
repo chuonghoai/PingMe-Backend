@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
- 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { ConversationParticipant } from './conversationParticipant.entity';
 import { EConversationType } from '../enums/conversation.enum';
@@ -23,6 +23,9 @@ export class Conversation {
 
   @Column({ nullable: true })
   lastMessageAt: Date;
+
+  @Column({ type: 'varchar', nullable: true })
+  blockedById: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

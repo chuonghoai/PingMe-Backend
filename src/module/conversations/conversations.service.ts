@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConversationRepository } from './repository/conversation.repository';
@@ -35,6 +36,7 @@ export class ConversationService {
         avatarUrl: conv.avatarUrl,
         lastMessageSnippet: conv.lastMessageSnippet,
         lastMessageAt: conv.lastMessageAt,
+        blockedById: conv.blockedById,
         unreadCount: p.unreadCount,
         hasMuted: p.hasMuted,
         participants: conv.participants.map(op => ({
@@ -124,6 +126,7 @@ export class ConversationService {
     return new ApiResponse(true, 'Đã xóa hội thoại vĩnh viễn', null);
   }
 
+  // Get participant in conversation
   async getParticipantIds(conversationId: string, excludeUserId?: string): Promise<string[]> {
     const query = this.participantRepo.createQueryBuilder('cp')
       .select('cp.userId')
@@ -138,6 +141,7 @@ export class ConversationService {
     return participants.map(p => p.userId);
   }
 
+  // Reset unread count
   async resetUnreadCount(conversationId: string, userId: string): Promise<void> {
     const participant = await this.participantRepo.findOne({
       where: { conversationId: conversationId, userId: userId }
@@ -147,5 +151,37 @@ export class ConversationService {
       participant.unreadCount = 0;
       await this.participantRepo.save(participant);
     }
+  }
+
+  // Block user
+  async blockUser(userId: string, conversationId: string): Promise<ApiResponse<any>> {
+    const conv = await this.conversationRepo.findOne({ where: { id: conversationId } });
+    if (!conv) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Không tìm thấy hội thoại');
+
+    conv.blockedById = userId;
+    await this.conversationRepo.save(conv);
+    return new ApiResponse(true, 'Đã chặn người dùng', null);
+  }
+
+  // Unblock
+  async unblockUser(userId: string, conversationId: string): Promise<ApiResponse<any>> {
+    const conv = await this.conversationRepo.findOne({ where: { id: conversationId } });
+    if (!conv) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Không tìm thấy hội thoại');
+
+    if (conv.blockedById === userId) {
+      conv.blockedById = null;
+      await this.conversationRepo.save(conv);
+    }
+    return new ApiResponse(true, 'Đã bỏ chặn người dùng', null);
+  }
+
+  // Delete message history
+  async clearHistory(userId: string, conversationId: string): Promise<ApiResponse<any>> {
+    const participant = await this.participantRepo.findOne({ where: { userId, conversationId } });
+    if (!participant) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Không tìm thấy người tham gia');
+
+    participant.clearedAt = new Date();
+    await this.participantRepo.save(participant);
+    return new ApiResponse(true, 'Đã xóa lịch sử trò chuyện', null);
   }
 }
