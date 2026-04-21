@@ -52,8 +52,6 @@ export class AdminService implements OnModuleInit {
                 battery: 100,
                 speed: 0,
                 isHideMyLocation: true,
-                level: 99,
-                currentExp: 9999,
             });
 
             await this.userRepository.save(adminUser);

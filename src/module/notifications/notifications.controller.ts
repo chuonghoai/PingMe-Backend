@@ -10,6 +10,8 @@ import {
   Req,
   Post,
   Body,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
@@ -96,5 +98,13 @@ export class NotificationsController {
       message: `${actor.fullname}: ${dto.statusMessage}`,
       metadata: { statusMessage: dto.statusMessage },
     });
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async deleteNotification(@Req() req: any, @Param('id') notificationId: string) {
+    const currentUserId = req.user.userId;
+    await this.notificationsService.deleteNotification(currentUserId, notificationId);
+    return new ApiResponse(true, 'Đã xoá thông báo', null);
   }
 }

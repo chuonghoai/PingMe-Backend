@@ -15,6 +15,10 @@ import { WebsocketsModule } from './module/websockets/websockets.module';
 import { FriendsModule } from './module/friends/friends.module';
 import { NotificationsModule } from './module/notifications/notifications.module';
 import { CallsModule } from './module/calls/calls.module';
+import { IntimacyModule } from './module/intimacy/intimacy.module';
+import { ChallengesModule } from './module/challenges/challenges.module';
+import { MomentsModule } from './module/moments/moments.module';
+import { ExplorationModule } from './module/exploration/exploration.module';
 
 @Module({
   imports: [
@@ -55,6 +59,10 @@ import { CallsModule } from './module/calls/calls.module';
     FriendsModule,
     NotificationsModule,
     CallsModule,
+    IntimacyModule,
+    ChallengesModule,
+    MomentsModule,
+    ExplorationModule,
   ],
   controllers: [],
   providers: [

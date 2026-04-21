@@ -20,17 +20,36 @@ import {
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
 import { ToggleLocationShareDto, UpdateUserRequest } from './dto/user-request.dto';
+import { FriendsService } from '../friends/friends.service';
+import { MomentsService } from '../moments/moments.service';
+import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly friendsService: FriendsService,
+    private readonly momentsService: MomentsService,
+  ) {}
 
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async getMe(@Request() req: any) {
     const userId = req.user.userId; 
     return this.usersService.getUserBy(userId);
+  }
+
+  @Get('me/stats')
+  @HttpCode(HttpStatus.OK)
+  async getMyStats(@Request() req: any) {
+    const userId = req.user.userId;
+    const friendIds = await this.friendsService.getFriendIds(userId);
+    const momentCount = await this.momentsService.countByUser(userId);
+    return new ApiResponse(true, 'Lấy thống kê thành công', {
+      friendCount: friendIds.length,
+      momentCount,
+    });
   }
 
   @Get('nearby')
@@ -47,6 +66,16 @@ export class UsersController {
     const parsedRadius = radius ? parseFloat(radius) : 100;
 
     return this.usersService.getNearbyUsers(userId, parsedLat, parsedLng, parsedRadius);
+  }
+
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  async searchUsers(
+    @Request() req: any,
+    @Query('q') q: string,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.searchUsers(q, userId);
   }
 
   @Put('me')
