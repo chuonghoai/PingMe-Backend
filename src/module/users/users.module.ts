@@ -9,12 +9,17 @@ import { WebsocketsModule } from '../websockets/websockets.module';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { ConversationModule } from '../conversations/conversations.module';
+import { FriendsModule } from '../friends/friends.module';
+import { MomentsModule } from '../moments/moments.module';
+import { Friend } from '../friends/entities/friend.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Friend]),
     forwardRef(() => WebsocketsModule),
     ConversationModule,
+    forwardRef(() => FriendsModule),
+    forwardRef(() => MomentsModule),
   ],
   providers: [UsersService, UserRepository, AdminService],
   controllers: [UsersController, AdminController],

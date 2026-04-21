@@ -20,8 +20,8 @@ export class Message {
   @Column()
   conversationId: string;
 
-  @Column()
-  senderId: string;
+  @Column({ nullable: true })
+  senderId: string | null;
 
   @Column({ nullable: true })
   mediaId: string;
@@ -55,7 +55,7 @@ export class Message {
   @JoinColumn({ name: 'conversationId' })
   conversation: Conversation;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'senderId' })
   sender: User;
 

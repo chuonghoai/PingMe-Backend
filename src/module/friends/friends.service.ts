@@ -24,8 +24,13 @@ import {
 } from './dto/friend.dto';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
+import { ConversationService } from '../conversations/conversations.service';
+import { MessagesService } from '../messages/messages.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { EConversationType } from '../conversations/enums/conversation.enum';
 import { calculateDistance } from 'src/utils/calculate.util';
 import { formatDistance, formatLastActive } from 'src/utils/format.util';
+import { IntimacyService } from '../intimacy/intimacy.service';
 
 @Injectable()
 export class FriendsService {
@@ -33,6 +38,10 @@ export class FriendsService {
     @InjectRepository(Friend) private readonly friendRepo: Repository<Friend>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly websocketsService: WebsocketsService,
+    private readonly conversationService: ConversationService,
+    private readonly messagesService: MessagesService,
+    private readonly notificationsService: NotificationsService,
+    private readonly intimacyService: IntimacyService,
   ) {}
 
   // Get friends list
@@ -156,6 +165,39 @@ export class FriendsService {
       status: savedRequest.status,
       createdAt: savedRequest.createdAt,
     };
+
+    // === TẠO NOTIFICATION + EMIT REALTIME ===
+    try {
+      const notification = await this.notificationsService.createFriendRequestNotification(
+        sender.id,
+        sender.fullname,
+        sender.avatarUrl,
+        targetUserId,
+        savedRequest.id, // Pass requestId
+      );
+      // Emit WS event cho người nhận
+      this.websocketsService.emitToUsers(
+        [targetUserId],
+        'new_notification',
+        {
+          notificationId: notification.id,
+          type: 'SOCIAL',
+          subType: 'FRIEND_REQUEST',
+          title: 'Lời mời kết bạn',
+          message: `${sender.fullname} đã gửi cho bạn lời mời kết bạn`,
+          metadata: { // Actor data should be inside metadata to match DB structure
+            actorId: sender.id,
+            actorName: sender.fullname,
+            actorAvatarUrl: sender.avatarUrl,
+            requestId: savedRequest.id,
+          },
+          createdAt: notification.createdAt,
+        },
+      );
+    } catch (err) {
+      console.error('[Friends] Lỗi khi tạo notification cho friend request:', err);
+    }
+
     return new ApiResponse(true, 'Friend request sent', responseData);
   }
 
@@ -185,9 +227,92 @@ export class FriendsService {
       friendRequest.status = FriendStatus.ACCEPTED;
       await this.friendRepo.save(friendRequest);
 
+      // === TỰ ĐỘNG TẠO CONVERSATION + SYSTEM MESSAGE ===
+      let conversationId: string | null = null;
+      try {
+        // Tạo hoặc tìm lại conversation 1-1 giữa 2 người
+        const convResult = await this.conversationService.startConversation(
+          userId, // người chấp nhận
+          {
+            participantIds: [friendRequest.senderId],
+            type: EConversationType.ONE_TO_ONE,
+          },
+        );
+        const conversation = convResult.data;
+        conversationId = conversation?.id || null;
+
+        // Gửi system message
+        if (conversationId) {
+          await this.messagesService.saveSystemMessage(
+            conversationId,
+            'Hai bạn đã trở thành bạn bè, hãy gửi tin nhắn đầu tiên cho nhau 🎉',
+          );
+        }
+      } catch (err) {
+        console.error('[Friends] Lỗi khi tạo conversation sau khi kết bạn:', err);
+      }
+
+      // === EMIT WEBSOCKET EVENT cho cả 2 user ===
+      try {
+        const sender = await this.userRepo.findOne({ where: { id: friendRequest.senderId } });
+        const accepter = await this.userRepo.findOne({ where: { id: userId } });
+
+        const eventPayload = {
+          requestId: friendRequest.id,
+          conversationId,
+          sender: {
+            userId: friendRequest.senderId,
+            fullName: sender?.fullname || '',
+            avatarUrl: sender?.avatarUrl || '',
+          },
+          accepter: {
+            userId: userId,
+            fullName: accepter?.fullname || '',
+            avatarUrl: accepter?.avatarUrl || '',
+          },
+        };
+
+        // Emit 'friend_accepted' event to both users
+        this.websocketsService.emitToUsers(
+          [friendRequest.senderId, userId],
+          'friend_accepted',
+          eventPayload,
+        );
+
+        // Tạo notification cho người gửi lời mời (sender) biết đã được chấp nhận
+        const acceptNotification = await this.notificationsService.createFriendAcceptedNotification(
+          userId,
+          accepter?.fullname || '',
+          accepter?.avatarUrl || '',
+          friendRequest.senderId,
+          conversationId,
+        );
+        this.websocketsService.emitToUsers(
+          [friendRequest.senderId],
+          'new_notification',
+          {
+            notificationId: acceptNotification.id,
+            type: 'SOCIAL',
+            subType: 'FRIEND_ACCEPTED',
+            title: 'Kết bạn thành công',
+            message: `${accepter?.fullname || ''} đã chấp nhận lời mời kết bạn của bạn`,
+            actor: {
+              userId: userId,
+              fullName: accepter?.fullname || '',
+              avatarUrl: accepter?.avatarUrl || '',
+            },
+            metadata: { conversationId },
+            createdAt: acceptNotification.createdAt,
+          },
+        );
+      } catch (err) {
+        console.error('[Friends] Lỗi khi emit friend_accepted WS:', err);
+      }
+
       return new ApiResponse(true, 'Đã chấp nhận lời mời kết bạn', {
         requestId: friendRequest.id,
         status: FriendStatus.ACCEPTED,
+        conversationId,
       });
     } else {
       await this.friendRepo.remove(friendRequest);
@@ -227,29 +352,38 @@ export class FriendsService {
       relations: ['sender', 'targetUser'], 
     });
 
+    console.log(`[FriendsOnMap] User ${userId}: found ${friends.length} ACCEPTED friendships`);
+
     // Query websocket
     const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
+    console.log(`[FriendsOnMap] Online users: [${onlineUsers.join(', ')}]`);
 
     const friendsOnMap: FriendOnMapDto[] = [];
     for (const friend of friends) {
       const isSenderMe = friend.senderId === userId;
       const otherUser = isSenderMe ? friend.targetUser : friend.sender;
 
-      if (otherUser.lat !== null && otherUser.lng !== null && otherUser.lat !== undefined) {
-        if (otherUser.isHideMyLocation) continue;
+      const isOnline = onlineUsers.includes(otherUser.id);
+      const hasCoords = otherUser.lat !== null && otherUser.lng !== null && otherUser.lat !== undefined;
+      const isHiding = otherUser.isHideMyLocation;
+      
+      console.log(`[FriendsOnMap] Friend "${otherUser.fullname}" (${otherUser.id}): online=${isOnline}, hasCoords=${hasCoords}, hiding=${isHiding}, status=${friend.status}`);
 
-        const isOnline = onlineUsers.includes(otherUser.id);
-        if (!isOnline) continue; // Only show ONLINE friends on map
+      if (!hasCoords) continue;
+      if (isHiding) continue;
+      if (!isOnline) continue; // Only show ONLINE friends on map
 
-        friendsOnMap.push({
-          userId: otherUser.id,
-          avatarUrl: otherUser.avatarUrl || '',
-          latitude: otherUser.lat,
-          longitude: otherUser.lng,
-          onlineStatus: 'ONLINE',
-        });
-      }
+      friendsOnMap.push({
+        userId: otherUser.id,
+        fullName: otherUser.fullname || '',
+        avatarUrl: otherUser.avatarUrl || '',
+        latitude: otherUser.lat,
+        longitude: otherUser.lng,
+        onlineStatus: 'ONLINE',
+      });
     }
+
+    console.log(`[FriendsOnMap] Result: ${friendsOnMap.length} friends on map`);
     return new ApiResponse(true, 'Get friends on map successfully', friendsOnMap);
   }
 
@@ -301,11 +435,24 @@ export class FriendsService {
       distanceStr = formatDistance(distanceMeters);
     }
 
-    // Calculate rank
-    const level = targetUser.level || 1;
-    const currentExp = targetUser.currentExp || 0;
-    const nextLevelExp = level * 1000;
-    const progressPercent = Math.min(Math.round((currentExp / nextLevelExp) * 100), 100);
+    // Calculate rank from REAL Intimacy Data
+    const intimacyData = await this.intimacyService.getIntimacyInfo(currentUserId, targetUserId);
+    const level = intimacyData.level;
+    const currentExp = intimacyData.totalIntimacyScore;
+    const nextLevelExp = intimacyData.nextLevelExp;
+    const progressPercent = nextLevelExp > 0 ? Math.min(Math.round((currentExp / nextLevelExp) * 100), 100) : 0;
+
+    // Map aura to Vietnamese display name
+    let rankName = 'Người quen (Thủy tinh)';
+    if (intimacyData.auraUnlocked === 'DIAMOND') rankName = 'Ngoại hạng (Kim cương)';
+    else if (intimacyData.auraUnlocked === 'PLATINUM') rankName = 'Tri kỷ (Bạch kim)';
+    else if (intimacyData.auraUnlocked === 'GOLD') rankName = 'Khắng khít (Vàng)';
+    else if (intimacyData.auraUnlocked === 'SILVER') rankName = 'Bạn thân (Bạc)';
+
+    // Calculate mutual friends
+    const currentUserFriends = await this.getFriendIds(currentUserId);
+    const targetUserFriends = await this.getFriendIds(targetUserId);
+    const mutualFriendsCount = currentUserFriends.filter(id => targetUserFriends.includes(id)).length;
 
     // Return data
     const popupData: FriendMapPopupDto = {
@@ -316,6 +463,7 @@ export class FriendsService {
         avatarUrl: targetUser.avatarUrl || 'https://ui-avatars.com/api/?name=User',
         onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
         lastActive: formatLastActive(targetUser.lastActiveAt, isOnline),
+        mutualFriends: mutualFriendsCount,
       },
       relationship: {
         status: relStatus,
@@ -333,6 +481,7 @@ export class FriendsService {
         statusMessage: targetUser.statusMessage || '',
         activityType: targetUser.activityType || 'OFFLINE',
         battery: targetUser.battery ?? 0,
+        isCharging: targetUser.isCharging || false,
         speed: targetUser.speed || 0,
       },
       actions: {
@@ -349,11 +498,14 @@ export class FriendsService {
         checkInLocation: targetUser.checkInLocation || '',
         rank: {
           level: level,
-          name: `Người Khám Phá Lv.${level}`,
+          name: rankName,
           iconUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
           currentExp: currentExp,
           nextLevelExp: nextLevelExp,
           progressPercent: progressPercent,
+          currentStreak: intimacyData.currentStreak,
+          longestStreak: intimacyData.longestStreak,
+          aura: intimacyData.auraUnlocked,
         },
       },
     };

@@ -24,11 +24,17 @@ import { MessagesService } from '../messages/messages.service';
 import { UsersService } from '../users/users.service';
 import { FriendsService } from '../friends/friends.service';
 import { Throttle } from '@nestjs/throttler';
+import { IntimacyService } from '../intimacy/intimacy.service';
+import { EIntimacyEventType } from '../intimacy/entities/intimacy-event.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  // Key: "userId_friendId" (sorted), Value: timestamp
+  private meetupCooldowns = new Map<string, number>();
 
   constructor(
     private jwtService: JwtService,
@@ -38,7 +44,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private conversationService: ConversationService,
     private usersService: UsersService,
     private friendsService: FriendsService,
+    private intimacyService: IntimacyService,
+    private notificationsService: NotificationsService,
   ) { }
+
+  afterInit(server: Server) {
+    this.websocketsService.setServer(server);
+  }
 
   // Connect websocket
   async handleConnection(client: Socket) {
@@ -238,28 +250,150 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @Throttle({ default: { limit: 5, ttl: 5000 } })
   async handleUpdateLocation(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { lat: number; lng: number },
+    @MessageBody() payload: { lat: number; lng: number; speed?: number; battery?: number; isCharging?: boolean },
   ) {
     const userId = client.data.userId;
     if (!userId || payload.lat == null || payload.lng == null) return;
 
     // Save location to DB & get user object
-    const user = await this.usersService.updateLocation(userId, payload.lat, payload.lng);
+    const user = await this.usersService.updateLocation(userId, payload.lat, payload.lng, payload.speed, payload.battery, payload.isCharging);
 
-    // Broadcast to online friends
+    // Broadcast to online friends & Calculate Proximity Intimacy
     const friendIds = await this.friendsService.getFriendIds(userId);
-    friendIds.forEach((friendId) => {
+    for (const friendId of friendIds) {
       const socketId = this.websocketsService.getSocketId(friendId);
       if (socketId) {
         this.server.to(socketId).emit('friend_location_update', {
           userId,
           lat: payload.lat,
           lng: payload.lng,
+          fullName: user.fullname || '',
           avatarUrl: user.avatarUrl || '',
           updatedAt: new Date(),
         });
+
+        // ── Proximity Intimacy Logic ──
+        const friendInfo = await this.usersService.findById(friendId);
+        if (friendInfo?.lat && friendInfo?.lng) {
+          const R = 6371; // Earth radius in km
+          const dLat = (friendInfo.lat - payload.lat) * (Math.PI / 180);
+          const dLon = (friendInfo.lng - payload.lng) * (Math.PI / 180);
+          const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(payload.lat * (Math.PI / 180)) * Math.cos(friendInfo.lat * (Math.PI / 180)) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+          const distanceKM = R * c; // Distance in km
+          
+          if (distanceKM <= 0.05) { // 50 meters
+            this.intimacyService.processInteraction(userId, friendId, EIntimacyEventType.PROXIMITY).catch(console.error);
+          }
+
+          // ── Proximity Meet-up Logic (30 meters) ──
+          if (distanceKM <= 0.03) {
+            const pairKey = [userId, friendId].sort().join('_');
+            const now = Date.now();
+            const lastMeetup = this.meetupCooldowns.get(pairKey) || 0;
+            
+            // Cooldown: 3 hours = 3 * 60 * 60 * 1000 = 10800000 ms
+            if (now - lastMeetup > 10800000) {
+              this.meetupCooldowns.set(pairKey, now);
+
+              // 1. Emit to the two users involved for the Ping Modal
+              const u1Socket = this.websocketsService.getSocketId(userId);
+              const u2Socket = this.websocketsService.getSocketId(friendId);
+              
+              const midLat = (payload.lat + friendInfo.lat) / 2;
+              const midLng = (payload.lng + friendInfo.lng) / 2;
+
+              const meetupPayload = {
+                user1: userId,
+                user2: friendId,
+                user1Name: user.fullname || '',
+                user2Name: friendInfo.fullname || '',
+                lat: midLat,
+                lng: midLng,
+              };
+
+              if (u1Socket) this.server.to(u1Socket).emit('proximity_meetup', meetupPayload);
+              if (u2Socket) this.server.to(u2Socket).emit('proximity_meetup', meetupPayload);
+
+              // 2. Broadcast to Mutual Friends
+              this.friendsService.getFriendIds(userId).then(u1Friends => {
+                this.friendsService.getFriendIds(friendId).then(u2Friends => {
+                  const mutualFriends = u1Friends.filter(id => u2Friends.includes(id));
+                  mutualFriends.forEach(mfId => {
+                    // Do not send to the two users themselves
+                    if (mfId === userId || mfId === friendId) return;
+                    const mfSocket = this.websocketsService.getSocketId(mfId);
+                    if (mfSocket) {
+                      this.server.to(mfSocket).emit('proximity_broadcast', meetupPayload);
+                    }
+                  });
+                });
+              });
+
+              // 3. Create persistent Notification
+              this.notificationsService.createProximityMeetupNotification(
+                userId, friendId, user.fullname || '', friendInfo.fullname || ''
+              ).catch(e => console.log('Proximity notification error', e));
+            }
+          }
+        }
       }
-    });
+    }
+  }
+
+  // Ping/Wave Friend
+  @SubscribeMessage('ping_friend')
+  @Throttle({ default: { limit: 5, ttl: 5000 } })
+  async handlePingFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { friendId: string },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId || !payload.friendId) return;
+
+    const socketId = this.websocketsService.getSocketId(payload.friendId);
+    if (socketId) {
+      const sender = await this.usersService.findById(senderId);
+      this.server.to(socketId).emit('receive_nudge', {
+        senderId,
+        senderName: sender?.fullname || 'Một người bạn',
+        timestamp: new Date().toISOString(),
+      });
+
+      // 2. Persistent Notification
+      if (sender) {
+        this.notificationsService.createNudgeNotification(
+          senderId, sender.fullname, sender.avatarUrl || '', payload.friendId
+        ).catch(e => console.log('Nudge notification error', e));
+      }
+
+      client.emit('ping_sent_success', { success: true });
+    } else {
+      client.emit('ping_error', { message: 'Người bạn này đang ngoại tuyến.' });
+    }
+  }
+
+  // Request Location Update
+  @SubscribeMessage('req_location_update')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  async handleReqLocationUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { friendId: string },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId || !payload.friendId) return;
+
+    const socketId = this.websocketsService.getSocketId(payload.friendId);
+    if (socketId) {
+      this.server.to(socketId).emit('request_location_update', {
+        requestedBy: senderId,
+      });
+      client.emit('req_location_sent_success', { success: true });
+    } else {
+      client.emit('req_location_error', { message: 'Người bạn này đang ngoại tuyến.' });
+    }
   }
 }
-
