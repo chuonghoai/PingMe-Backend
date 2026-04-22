@@ -9,7 +9,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { MomentReport } from './moments.report.entity';
+import { MomentReport } from './moment-report.entity';
 
 @Entity('moments')
 export class Moment {

@@ -11,7 +11,7 @@ import { FriendsService } from '../friends/friends.service';
 import { WebsocketsService } from '../websockets/websockets.service';
 import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
-import { MomentReport } from './entities/moments.report.entity';
+import { MomentReport } from './entities/moment-report.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 
 // ── Haversine distance in meters ──
