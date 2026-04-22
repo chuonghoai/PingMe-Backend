@@ -6,8 +6,10 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { MomentReport } from './moments.report.entity';
 
 @Entity('moments')
 export class Moment {
@@ -35,4 +37,7 @@ export class Moment {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @OneToMany(() => MomentReport, (report) => report.moment)
+  reports: MomentReport[];
 }

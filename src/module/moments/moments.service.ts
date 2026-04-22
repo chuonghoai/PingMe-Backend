@@ -11,6 +11,8 @@ import { FriendsService } from '../friends/friends.service';
 import { WebsocketsService } from '../websockets/websockets.service';
 import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MomentReport } from './entities/moments.report.entity';
+import { CreateReportDto } from './dto/create-report.dto';
 
 // ── Haversine distance in meters ──
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -48,7 +50,9 @@ export class MomentsService {
     private readonly friendsService: FriendsService,
     private readonly websocketsService: WebsocketsService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+    @InjectRepository(MomentReport)
+    private readonly reportRepo: Repository<MomentReport>
+  ) { }
 
   // ── Count moments by user ──
   async countByUser(userId: string): Promise<number> {
@@ -285,5 +289,22 @@ export class MomentsService {
     });
 
     return new ApiResponse(true, 'Lấy clusters thành công', result);
+  }
+
+  async reportMoment(userId: string, momentId: string, dto: CreateReportDto): Promise<ApiResponse<any>> {
+    const moment = await this.momentRepo.findOne({ where: { id: momentId } });
+    if (!moment) {
+      throw new NotFoundException('Không tìm thấy khoảnh khắc');
+    }
+
+    const report = this.reportRepo.create({
+      momentId,
+      reporterId: userId,
+      reason: dto.reason,
+      description: dto.description,
+    });
+
+    await this.reportRepo.save(report);
+    return new ApiResponse(true, 'Đã gửi báo cáo thành công', null);
   }
 }

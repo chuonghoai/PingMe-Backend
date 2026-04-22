@@ -15,6 +15,7 @@ import {
 import { MomentsService } from './moments.service';
 import { CreateMomentDto } from './dto/create-moment.dto';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
+import { CreateReportDto } from './dto/create-report.dto';
 
 @Controller('moments')
 @UseGuards(JwtAuthGuard)
@@ -72,5 +73,13 @@ export class MomentsController {
   async getMapClusters(@Req() req: any) {
     const userId = req.user.userId;
     return this.momentsService.getMapClusters(userId);
+  }
+
+  // POST /moments/:id/report
+  @Post(':id/report')
+  @HttpCode(HttpStatus.OK)
+  async reportMoment(@Req() req: any, @Param('id') momentId: string, @Body() dto: CreateReportDto) {
+    const userId = req.user.userId;
+    return this.momentsService.reportMoment(userId, momentId, dto);
   }
 }
