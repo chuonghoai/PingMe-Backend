@@ -89,6 +89,9 @@ export interface FriendMapPopupDto {
     onlineStatus: string;
     lastActive: string;
     mutualFriends: number;
+    bio?: string;
+    gender?: string;
+    dob?: Date | string;
   };
   relationship: {
     status: FriendPopupStatus | string;

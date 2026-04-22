@@ -326,6 +326,22 @@ export class NotificationsService {
     return await this.notificationRepo.save(notification);
   }
 
+  // Mark friend request notification as responded
+  async markAsResponded(userId: string, notificationId: string, action: string) {
+    const notification = await this.notificationRepo.findOne({
+      where: { id: notificationId, userId },
+    });
+    if (!notification) return;
+
+    notification.metadata = {
+      ...notification.metadata,
+      responded: true,
+      action: action,
+    };
+    notification.isRead = true;
+    await this.notificationRepo.save(notification);
+  }
+
   // Delete notification
   async deleteNotification(userId: string, notificationId: string) {
     try {

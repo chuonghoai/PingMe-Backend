@@ -13,6 +13,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
 import { ConversationService } from './conversations.service';
@@ -30,6 +31,15 @@ export class ConversationController {
   async getMyConversations(@Request() req: any) {
     const userId = req.user.userId;
     return this.conversationService.getMyConversations(userId);
+  }
+
+  // Search conversations
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 1000 } })
+  async searchConversations(@Request() req: any, @Query('q') q: string) {
+    const userId = req.user.userId;
+    return this.conversationService.searchConversations(userId, q);
   }
 
   // Create conversation
@@ -86,5 +96,12 @@ export class ConversationController {
   @HttpCode(HttpStatus.OK)
   async clearHistory(@Request() req: any, @Param('id') conversationId: string) {
     return this.conversationService.clearHistory(req.user.userId, conversationId);
+  }
+
+  // Toggle Mute
+  @Post(':id/mute')
+  @HttpCode(HttpStatus.OK)
+  async toggleMute(@Request() req: any, @Param('id') conversationId: string) {
+    return this.conversationService.toggleMute(req.user.userId, conversationId);
   }
 }

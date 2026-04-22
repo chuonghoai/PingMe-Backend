@@ -238,7 +238,7 @@ export class ChallengesService {
     await this.inventoryRepo.save(inv);
 
     // Process intimacy points
-    await this.intimacyService.processInteraction(senderId, receiverId, EIntimacyEventType.GIFT, def.intimacyBonus);
+    const actualGained = await this.intimacyService.processInteraction(senderId, receiverId, EIntimacyEventType.GIFT, def.intimacyBonus);
 
     // Update GIFT_SENT challenge
     await this.updateProgress(senderId, 'GIFT_SENT');
@@ -250,14 +250,14 @@ export class ChallengesService {
       itemType,
       itemName: def.name,
       itemEmoji: def.emoji,
-      intimacyGained: def.intimacyBonus,
+      intimacyGained: actualGained,
     });
 
     return {
       success: true,
       itemType,
       itemName: def.name,
-      intimacyGained: def.intimacyBonus,
+      intimacyGained: actualGained,
       remainingQuantity: inv.quantity,
     };
   }

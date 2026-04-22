@@ -95,10 +95,12 @@ export class UsersService {
       throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Không tìm thấy người dùng');
     }
 
-    user.fullname = updateUseRequest.fullname;
-    user.phone = updateUseRequest.phone;
-    user.gender = updateUseRequest.gender;
-    user.dob = new Date(updateUseRequest.dob);
+    if (updateUseRequest.fullname !== undefined) user.fullname = updateUseRequest.fullname;
+    if (updateUseRequest.avatarUrl !== undefined) user.avatarUrl = updateUseRequest.avatarUrl;
+    if (updateUseRequest.phone !== undefined) user.phone = updateUseRequest.phone;
+    if (updateUseRequest.gender !== undefined) user.gender = updateUseRequest.gender;
+    if (updateUseRequest.dob !== undefined) user.dob = new Date(updateUseRequest.dob);
+    if (updateUseRequest.bio !== undefined) user.bio = updateUseRequest.bio;
 
     await this.userRepository.save(user);
 

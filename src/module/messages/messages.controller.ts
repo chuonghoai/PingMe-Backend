@@ -75,4 +75,20 @@ export class MessagesController {
       limit,
     );
   }
+
+  @Get(':conversationId/search')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 1000 } })
+  async searchMessages(
+    @Request() req: any,
+    @Param('conversationId') conversationId: string,
+    @Query('q') q: string,
+  ) {
+    const userId = req.user.userId;
+    return this.messagesService.searchMessagesInConversation(
+      userId,
+      conversationId,
+      q,
+    );
+  }
 }

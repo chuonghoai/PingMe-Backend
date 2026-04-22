@@ -464,6 +464,9 @@ export class FriendsService {
         onlineStatus: isOnline ? 'ONLINE' : 'OFFLINE',
         lastActive: formatLastActive(targetUser.lastActiveAt, isOnline),
         mutualFriends: mutualFriendsCount,
+        bio: targetUser.bio || '',
+        gender: targetUser.gender,
+        dob: targetUser.dob,
       },
       relationship: {
         status: relStatus,
