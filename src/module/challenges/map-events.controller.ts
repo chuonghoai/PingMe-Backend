@@ -44,9 +44,12 @@ export class MapEventsController {
 
     // Complete map event
     @Post('check-in/:eventId')
-    async checkInEvent(@Req() req, @Param('eventId') eventId: string) {
+    async checkInEvent(
+        @Req() req,
+        @Param('eventId') eventId: string,
+        @Body() body: { latitude: number; longitude: number }
+    ) {
         const userId = req.user.userId;
-        // TODO: Check distance between user and event
-        return await this.mapEventsService.completeEvent(userId, eventId);
+        return await this.mapEventsService.completeEvent(userId, eventId, body.latitude, body.longitude);
     }
 }

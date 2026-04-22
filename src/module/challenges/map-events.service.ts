@@ -84,7 +84,7 @@ export class MapEventsService {
     }
 
     // Complete map event
-    async completeEvent(userId: string, eventId: string): Promise<ApiResponse<any>> {
+    async completeEvent(userId: string, eventId: string, userLat: number, userLng: number): Promise<ApiResponse<any>> {
         const event = await this.eventRepo.findOne({ where: { id: eventId } });
         if (!event) throw new BadRequestException('Sự kiện không tồn tại');
 
@@ -98,7 +98,15 @@ export class MapEventsService {
             throw new BadRequestException('Bạn đã nhận thưởng từ sự kiện này rồi');
         }
 
-        // TODO: Check distance between user and event
+        const distance = this.calculateDistance(event.latitude, event.longitude, userLat, userLng);
+        const requiredDistance = 20;
+        if (distance > requiredDistance) {
+            console.log('Failed to check in:', {
+                required: `${requiredDistance * 1000}m`,
+                actual: `${distance * 1000}m`,
+            });
+            return new ApiResponse(false, `Bạn quá xa sự kiện! Cần ở trong bán kính ${requiredDistance * 1000}m.`, null);
+        }
 
         await this.historyRepo.save({ userId, eventId });
         let inventory = await this.inventoryRepo.findOne({
@@ -119,5 +127,19 @@ export class MapEventsService {
         }
 
         return new ApiResponse(true, 'Hoàn thành xuất sắc!', null);
+    }
+
+    // Helper: Calculate distance between two points in kilometers
+    private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return distance;
     }
 }
