@@ -6,7 +6,7 @@ import { UserRepository } from '../users/users.repository';
 export class WebsocketsService implements OnModuleInit {
   private connectedUsers = new Map<string, string>();
 
-  constructor(private userRepository: UserRepository) {}
+  constructor(private userRepository: UserRepository) { }
 
   // Reset all users to offline when server starts (clear stale data)
   async onModuleInit() {
@@ -87,6 +87,14 @@ export class WebsocketsService implements OnModuleInit {
     if (sockets.length > 0) {
       this.server.to(sockets).emit(event, data);
     }
+  }
+
+  emitToAll(event: string, data: any) {
+    if (!this.server) {
+      console.warn('[WebSocket] Cannot emitToAll: server instance is not set.');
+      return;
+    }
+    this.server.emit(event, data);
   }
 }
 
