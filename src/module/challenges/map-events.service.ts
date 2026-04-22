@@ -7,6 +7,7 @@ import { UserInventory } from './entities/user-inventory.entity';
 import { CreateMapEventDto } from './dto/create-map-event.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
 
 @Injectable()
 export class MapEventsService {
@@ -22,7 +23,7 @@ export class MapEventsService {
     ) { }
 
     // Create new event
-    async createEvent(dto: CreateMapEventDto) {
+    async createEvent(dto: CreateMapEventDto): Promise<ApiResponse<any>> {
         const event = this.eventRepo.create({
             ...dto,
             startTime: new Date(dto.startTime),
@@ -44,11 +45,25 @@ export class MapEventsService {
             savedEvent.id,
         ).catch(e => console.log(e));
 
-        return savedEvent;
+        return new ApiResponse(true, 'Đã tạo sự kiện thành công', savedEvent);
+    }
+
+    // Admin: get all map events
+    async getAllMapEvents(): Promise<ApiResponse<any>> {
+        const result = await this.eventRepo.find();
+        return new ApiResponse(true, 'Lấy danh sách sự kiện thành công', result);
+    }
+
+    // Admin: delete map event
+    async deleteMapEvent(eventId: string): Promise<ApiResponse<any>> {
+        const event = await this.eventRepo.findOne({ where: { id: eventId } });
+        if (!event) throw new BadRequestException('Sự kiện không tồn tại');
+        await this.eventRepo.remove(event);
+        return new ApiResponse(true, 'Đã xóa sự kiện', null);
     }
 
     // Get map events have not completed yet
-    async getActiveEventsForUser(userId: string) {
+    async getActiveEventsForUser(userId: string): Promise<ApiResponse<any>> {
         const now = new Date();
 
         const completedRecords = await this.historyRepo.find({
@@ -65,11 +80,11 @@ export class MapEventsService {
             query.andWhere('event.id NOT IN (:...completedIds)', { completedIds });
         }
 
-        return await query.getMany();
+        return new ApiResponse(true, 'Lấy danh sách sự kiện thành công', await query.getMany());
     }
 
     // Complete map event
-    async completeEvent(userId: string, eventId: string) {
+    async completeEvent(userId: string, eventId: string): Promise<ApiResponse<any>> {
         const event = await this.eventRepo.findOne({ where: { id: eventId } });
         if (!event) throw new BadRequestException('Sự kiện không tồn tại');
 
@@ -103,9 +118,6 @@ export class MapEventsService {
             );
         }
 
-        return {
-            message: 'Hoàn thành xuất sắc!',
-            reward: { item: event.rewardItem, quantity: event.rewardQuantity }
-        };
+        return new ApiResponse(true, 'Hoàn thành xuất sắc!', null);
     }
 }

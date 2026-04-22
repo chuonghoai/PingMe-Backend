@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Req, Delete } from '@nestjs/common';
 import { MapEventsService } from './map-events.service';
 import { CreateMapEventDto } from './dto/create-map-event.dto';
 import { JwtAuthGuard } from '../../core/security/jwt/jwt-auth.guard';
@@ -16,23 +16,30 @@ export class MapEventsController {
     @UseGuards(RolesGuard)
     @Roles(EUserRole.ADMIN)
     async createEvent(@Body() dto: CreateMapEventDto) {
-        const event = await this.mapEventsService.createEvent(dto);
-        return {
-            success: true,
-            message: 'Đã tạo sự kiện và phát thông báo toàn server',
-            data: event,
-        };
+        return await this.mapEventsService.createEvent(dto);
+    }
+
+    // Admin: get all map events
+    @Get('admin/all')
+    @UseGuards(RolesGuard)
+    @Roles(EUserRole.ADMIN)
+    async getAllMapEvents() {
+        return await this.mapEventsService.getAllMapEvents();
+    }
+
+    // Admin: delete map event
+    @Delete('admin/delete/:eventId')
+    @UseGuards(RolesGuard)
+    @Roles(EUserRole.ADMIN)
+    async deleteMapEvent(@Param('eventId') eventId: string) {
+        return await this.mapEventsService.deleteMapEvent(eventId);
     }
 
     // Get map events have not completed yet
     @Get('active')
     async getActiveEvents(@Req() req) {
         const userId = req.user.userId;
-        const events = await this.mapEventsService.getActiveEventsForUser(userId);
-        return {
-            success: true,
-            data: events,
-        };
+        return await this.mapEventsService.getActiveEventsForUser(userId);
     }
 
     // Complete map event
@@ -40,10 +47,6 @@ export class MapEventsController {
     async checkInEvent(@Req() req, @Param('eventId') eventId: string) {
         const userId = req.user.userId;
         // TODO: Check distance between user and event
-        const result = await this.mapEventsService.completeEvent(userId, eventId);
-        return {
-            success: true,
-            data: result,
-        };
+        return await this.mapEventsService.completeEvent(userId, eventId);
     }
 }
