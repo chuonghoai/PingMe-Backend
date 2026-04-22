@@ -12,12 +12,14 @@ import { MapEvent } from './entities/map-event.entity';
 import { UserEventHistory } from './entities/user-event-history.entity';
 import { MapEventsController } from './map-events.controller';
 import { MapEventsService } from './map-events.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserChallenge, UserInventory, ActiveEffect, MapEvent, UserEventHistory]),
     forwardRef(() => WebsocketsModule),
     forwardRef(() => IntimacyModule),
+    forwardRef(() => NotificationsModule),
   ],
   controllers: [ChallengesController, MapEventsController],
   providers: [ChallengesService, MapEventsService],

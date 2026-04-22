@@ -6,7 +6,7 @@ import { RolesGuard } from '../../core/security/roles/roles.guard';
 import { Roles } from '../../core/security/roles/roles.decorator';
 import { EUserRole } from '../users/enums/user.enum';
 
-@Controller('map-events')
+@Controller('map/events')
 @UseGuards(JwtAuthGuard)
 export class MapEventsController {
     constructor(private readonly mapEventsService: MapEventsService) { }

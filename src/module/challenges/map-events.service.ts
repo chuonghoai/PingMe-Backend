@@ -6,20 +6,19 @@ import { UserEventHistory } from './entities/user-event-history.entity';
 import { UserInventory } from './entities/user-inventory.entity';
 import { CreateMapEventDto } from './dto/create-map-event.dto';
 import { WebsocketsService } from '../websockets/websockets.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MapEventsService {
     constructor(
         @InjectRepository(MapEvent)
         private readonly eventRepo: Repository<MapEvent>,
-
         @InjectRepository(UserEventHistory)
         private readonly historyRepo: Repository<UserEventHistory>,
-
         @InjectRepository(UserInventory)
         private readonly inventoryRepo: Repository<UserInventory>,
-
         private readonly websocketsService: WebsocketsService,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     // Create new event
@@ -37,6 +36,13 @@ export class MapEventsService {
             message: `Nhiệm vụ: ${savedEvent.name} vừa xuất hiện. Phần thưởng: ${savedEvent.rewardQuantity} ${savedEvent.rewardItem}`,
             eventInfo: savedEvent,
         });
+
+        this.notificationsService.createMapEventNotificationToAll(
+            savedEvent.name,
+            savedEvent.rewardItem,
+            savedEvent.rewardQuantity,
+            savedEvent.id,
+        ).catch(e => console.log(e));
 
         return savedEvent;
     }

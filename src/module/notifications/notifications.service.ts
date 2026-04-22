@@ -7,13 +7,15 @@ import { Notification } from './entities/notifications.entity';
 import { ApiResponse } from '../../core/dto/ApiResponse.dto';
 import { NotificationItemDto } from './dto/notifications.dto';
 import { ENotificationSubType, ENotificationType } from './enums/notifications.enum';
+import { UserRepository } from '../users/users.repository';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
-  ) {}
+    private readonly userRepository: UserRepository,
+  ) { }
 
   // Get notifications
   async getNotifications(
@@ -34,10 +36,10 @@ export class NotificationsService {
         message: notif.message,
         actor: notif.actor
           ? {
-              userId: notif.actor.id,
-              fullName: notif.actor.fullname,
-              avatarUrl: notif.actor.avatarUrl || '',
-            }
+            userId: notif.actor.id,
+            fullName: notif.actor.fullname,
+            avatarUrl: notif.actor.avatarUrl || '',
+          }
           : null,
         metadata: notif.metadata,
         isRead: notif.isRead,
@@ -96,7 +98,7 @@ export class NotificationsService {
       metadata: { distance: `${distanceMeters}m` },
       isRead: false,
     });
-    
+
     return await this.notificationRepo.save(notification);
   }
 
@@ -333,6 +335,46 @@ export class NotificationsService {
       console.log(`[NotificationService] Deleted notification ${notificationId} for user ${userId}`);
     } catch (err) {
       console.error(`[NotificationService] Error deleting notification:`, err);
+    }
+  }
+
+  async createMapEventNotificationToAll(
+    eventName: string,
+    rewardItem: string,
+    rewardQuantity: number,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      const users = await this.userRepository.find({ select: ['id'] });
+
+      if (!users || users.length === 0) return;
+
+      const title = '🌟 Sự kiện Bản đồ mới!';
+      const message = `Nhiệm vụ: ${eventName} vừa xuất hiện. Phần thưởng:${" " + rewardQuantity} ${rewardItem}`;
+
+      const notifications = users.map((user) => {
+        return this.notificationRepo.create({
+          userId: user.id,
+          type: ENotificationType.EVENT,
+          subType: ENotificationSubType.EVENT,
+          title: title,
+          message: message,
+          isRead: false,
+          metadata: {
+            eventId: eventId,
+          }
+        });
+      });
+
+      const chunkSize = 1000;
+      for (let i = 0; i < notifications.length; i += chunkSize) {
+        const chunk = notifications.slice(i, i + chunkSize);
+        await this.notificationRepo.insert(chunk);
+      }
+
+      console.log(`[Notification] Đã tạo thành công thông báo sự kiện cho ${users.length} users.`);
+    } catch (error) {
+      console.error('[Notification] Lỗi khi tạo thông báo sự kiện toàn server:', error);
     }
   }
 }

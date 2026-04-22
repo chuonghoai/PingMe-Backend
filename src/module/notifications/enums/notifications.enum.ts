@@ -3,6 +3,7 @@ export enum ENotificationType {
   ACTIVITY = 'ACTIVITY',
   SYSTEM = 'SYSTEM',
   SOCIAL = 'SOCIAL',
+  EVENT = 'EVENT',
 }
 
 export enum ENotificationSubType {
@@ -18,4 +19,5 @@ export enum ENotificationSubType {
   MOMENT_REACTION = 'MOMENT_REACTION',
   NUDGE_RECEIVED = 'NUDGE_RECEIVED',
   INTIMACY_LEVEL_UP = 'INTIMACY_LEVEL_UP',
+  EVENT = 'EVENT',
 }
