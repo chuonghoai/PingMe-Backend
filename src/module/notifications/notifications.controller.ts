@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   Post,
+  Patch,
   Body,
   Delete,
   Param,
@@ -98,6 +99,18 @@ export class NotificationsController {
       message: `${actor.fullname}: ${dto.statusMessage}`,
       metadata: { statusMessage: dto.statusMessage },
     });
+  }
+
+  @Patch(':id/responded')
+  @HttpCode(HttpStatus.OK)
+  async markAsResponded(
+    @Req() req: any,
+    @Param('id') notificationId: string,
+    @Body() body: { action: string },
+  ) {
+    const currentUserId = req.user.userId;
+    await this.notificationsService.markAsResponded(currentUserId, notificationId, body.action);
+    return new ApiResponse(true, 'Đã cập nhật trạng thái phản hồi', null);
   }
 
   @Delete(':id')

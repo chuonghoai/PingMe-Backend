@@ -63,6 +63,9 @@ export class User {
   @Column({ nullable: true, length: 255 })
   statusMessage: string;
 
+  @Column({ nullable: true, length: 500 })
+  bio: string;
+
   @Column({ type: 'enum', enum: EUserActivityType, default: EUserActivityType.OFFLINE })
   activityType: EUserActivityType;
 

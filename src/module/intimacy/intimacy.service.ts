@@ -78,7 +78,7 @@ export class IntimacyService {
   /**
    * Process a new interaction event between two users
    */
-  async processInteraction(u1: string, u2: string, eventType: EIntimacyEventType, customScoreDelta?: number): Promise<void> {
+  async processInteraction(u1: string, u2: string, eventType: EIntimacyEventType, customScoreDelta?: number): Promise<number> {
     try {
       const [user1Id, user2Id] = this.sortIds(u1, u2);
       
@@ -89,7 +89,7 @@ export class IntimacyService {
         const now = Date.now();
         if (lastProximityAt && (now - lastProximityAt < 5 * 60 * 1000)) {
           // Chưa đủ 5 phút, bỏ qua không cộng điểm
-          return;
+          return 0;
         }
         // Đủ 5 phút, cập nhật thời gian
         this.proximityCooldowns.set(key, now);
@@ -115,10 +115,10 @@ export class IntimacyService {
         await this.updateStreak(rel, today);
       }
 
-      if (dailyStat.pointsGained >= DAILY_CAP) {
+      if (eventType !== EIntimacyEventType.GIFT && dailyStat.pointsGained >= DAILY_CAP) {
         // Cap reached, just log event with 0 score
         await this.logEvent(rel.id, eventType, 0);
-        return;
+        return 0;
       }
 
       // 3. Compute score and multipliers
@@ -141,13 +141,15 @@ export class IntimacyService {
       // Guarantee at least 1 point if it had a base score above 0
       if (scoreDelta === 0 && (customScoreDelta !== undefined ? customScoreDelta > 0 : this.getEventScore(eventType) > 0)) scoreDelta = 1;
 
-      // Adjust if it pushes over cap
-      if (dailyStat.pointsGained + scoreDelta > DAILY_CAP) {
-        scoreDelta = DAILY_CAP - dailyStat.pointsGained;
+      if (eventType !== EIntimacyEventType.GIFT) {
+        // Adjust if it pushes over cap
+        if (dailyStat.pointsGained + scoreDelta > DAILY_CAP) {
+          scoreDelta = DAILY_CAP - dailyStat.pointsGained;
+        }
+        dailyStat.pointsGained += scoreDelta;
       }
 
       // 4. Update data
-      dailyStat.pointsGained += scoreDelta;
       if (eventType === EIntimacyEventType.CHAT) dailyStat.messagesCount += 1;
       
       rel.totalIntimacyScore += scoreDelta;
@@ -217,8 +219,10 @@ export class IntimacyService {
         }
       }
 
+      return scoreDelta;
     } catch (error) {
       this.logger.error(`Error processing intimacy interaction`, error);
+      return 0;
     }
   }
 

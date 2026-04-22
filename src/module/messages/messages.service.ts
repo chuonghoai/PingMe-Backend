@@ -416,4 +416,63 @@ export class MessagesService {
       },
     });
   }
+
+  // Search messages in a specific conversation
+  async searchMessagesInConversation(
+    userId: string,
+    conversationId: string,
+    keyword: string,
+  ): Promise<ApiResponse<any>> {
+    const participant = await this.participantRepo.findOne({
+      where: { userId, conversationId },
+    });
+
+    if (!participant) {
+      throw new CustomException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Bạn không có quyền tìm kiếm trong hội thoại này',
+      );
+    }
+
+    if (!keyword || keyword.trim() === '') {
+      return new ApiResponse(true, 'Kết quả tìm kiếm', []);
+    }
+
+    const searchTerm = `%${keyword.toLowerCase()}%`;
+
+    const whereCondition: any = {
+      conversationId,
+      type: EMessageType.TEXT,
+      isRevoked: false,
+    };
+
+    if (participant.clearedAt) {
+      whereCondition.createdAt = MoreThan(participant.clearedAt);
+    }
+
+    // Custom query to support ILIKE / LOWER LIKE
+    const messages = await this.messageRepo
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.sender', 'sender')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .andWhere('message.type = :type', { type: EMessageType.TEXT })
+      .andWhere('message.isRevoked = :isRevoked', { isRevoked: false })
+      .andWhere('LOWER(message.content) LIKE :searchTerm', { searchTerm })
+      .andWhere(participant.clearedAt ? 'message.createdAt > :clearedAt' : '1=1', { clearedAt: participant.clearedAt })
+      .orderBy('message.createdAt', 'DESC')
+      .take(50)
+      .getMany();
+
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      createdAt: msg.createdAt,
+      senderId: msg.senderId,
+      senderName: msg.sender?.fullname,
+      senderAvatar: msg.sender?.avatarUrl,
+    }));
+
+    return new ApiResponse(true, 'Kết quả tìm kiếm', formattedMessages);
+  }
 }

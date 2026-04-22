@@ -2,27 +2,35 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { isEmpty, IsEnum, IsNotEmpty, isNotEmpty, IsString } from 'class-validator';
+import { isEmpty, IsEnum, IsNotEmpty, IsOptional, isNotEmpty, IsString } from 'class-validator';
 import { EUserGender } from '../enums/user.enum';
 import { Transform } from 'class-transformer';
 
 export class UpdateUserRequest {
-  @IsNotEmpty({ message: 'Vui lòng nhập họ tên' })
+  @IsOptional()
   @IsString()
-  fullname: string;
+  fullname?: string;
 
-  @IsNotEmpty({ message: 'Vui lòng nhập số điện thoại' })
+  @IsOptional()
   @IsString()
-  phone: string;
+  avatarUrl?: string;
 
-  @IsNotEmpty({ message: 'Vui lòng chọn giới tính' })
-  @Transform(({ value }) => typeof value === 'string' ? value.toUpperCase() : value,)
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => typeof value === 'string' ? value.toUpperCase() : value)
   @IsEnum(EUserGender, { message: 'Giới tính không hợp lệ' })
-  gender: EUserGender;
+  gender?: EUserGender;
 
-  @IsNotEmpty({ message: 'Vui lòng nhập ngày sinh' })
+  @IsOptional()
   @IsString()
-  dob: string;
+  dob?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
 }
 
 export interface NearbyUserResponseDto {
