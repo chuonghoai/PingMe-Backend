@@ -7,7 +7,7 @@ export class MomentReport {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column()
+    @Column({ nullable: true })
     momentId: string;
 
     @Column()
