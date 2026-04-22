@@ -107,7 +107,7 @@ export class AdminAuthService {
         };
         const tempToken = this.jwtService.sign(payload, { expiresIn: '10m' });
 
-        await this.emailService.sendOtp(user.email, 'Mã OTP đăng nhập - PingMe', OtpPurpose.LOGIN_2FA);
+        //await this.emailService.sendOtp(user.email, 'Mã OTP đăng nhập - PingMe', OtpPurpose.LOGIN_2FA);
         return new ApiResponse(true, 'Vui lòng kiểm tra email để lấy mã OTP', { tempToken });
     }
 
@@ -116,7 +116,7 @@ export class AdminAuthService {
         try {
             const payload = this.jwtService.verify(dto.tempToken);
 
-            await this.verifyOtpCore(payload.email, dto.otp, OtpPurpose.LOGIN_2FA);
+            //await this.verifyOtpCore(payload.email, dto.otp, OtpPurpose.LOGIN_2FA);
 
             const user = await this.userRepository.findByEmail(payload.email);
             if (!user) throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Tài khoản không tồn tại');

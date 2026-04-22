@@ -27,7 +27,11 @@ export class MomentsAdminService {
             imageUrl: m.imageUrl,
             caption: m.caption,
             createdAt: m.createdAt,
-            user: { id: m.user?.id, fullName: m.user?.fullname },
+            user: {
+                id: m.user?.id,
+                fullname: m.user?.fullname,
+                avatarUrl: m.user?.avatarUrl
+            },
             reportCount: m.reportCount || 0,
             isReported: (m.reportCount || 0) > 0,
         }));
@@ -52,7 +56,11 @@ export class MomentsAdminService {
             imageUrl: m.imageUrl,
             caption: m.caption,
             createdAt: m.createdAt,
-            user: { id: m.user?.id, fullName: m.user?.fullname },
+            user: {
+                id: m.user?.id,
+                fullname: m.user?.fullname,
+                avatarUrl: m.user?.avatarUrl
+            },
             unhandledReportCount: m.reportCount || 0,
         }));
 
@@ -74,7 +82,11 @@ export class MomentsAdminService {
                 imageUrl: moment.imageUrl,
                 caption: moment.caption,
                 createdAt: moment.createdAt,
-                user: { id: moment.user?.id, fullName: moment.user?.fullname },
+                user: {
+                    id: moment.user?.id,
+                    fullname: moment.user?.fullname,
+                    avatarUrl: moment.user?.avatarUrl
+                },
             },
             reports: moment.reports.map(r => ({
                 id: r.id,
@@ -82,7 +94,11 @@ export class MomentsAdminService {
                 description: r.description,
                 isHandled: r.isHandled,
                 createdAt: r.createdAt,
-                reporter: { id: r.reporter?.id, fullName: r.reporter?.fullname }
+                reporter: {
+                    id: r.reporter?.id,
+                    fullname: r.reporter?.fullname,
+                    avatarUrl: r.reporter?.avatarUrl
+                }
             })),
         };
 

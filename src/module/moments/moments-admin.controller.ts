@@ -1,11 +1,12 @@
 import { Controller, Get, Delete, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { MomentsAdminService } from './moments-admin.service';
+import { JwtAuthGuard } from 'src/core/security/jwt/jwt-auth.guard';
 import { RolesGuard } from 'src/core/security/roles/roles.guard';
 import { Roles } from 'src/core/security/roles/roles.decorator';
 import { EUserRole } from '../users/enums/user.enum';
 
 @Controller('admin/moments')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(EUserRole.ADMIN)
 export class MomentsAdminController {
     constructor(private readonly adminMomentsService: MomentsAdminService) { }
