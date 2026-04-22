@@ -5,6 +5,7 @@ import { Roles } from "src/core/security/roles/roles.decorator";
 import { EUserRole } from "./enums/user.enum";
 import { RolesGuard } from "src/core/security/roles/roles.guard";
 import { ChangePasswordDto } from "./dto/change-password-request.dto";
+import { UpdateInventoryDto } from "./dto/update-inventory.dto";
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,5 +43,27 @@ export class AdminController {
     async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
         const userId = req.user.userId;
         return this.adminService.changePassword(userId, dto);
+    }
+
+    // Get user inventory by userId
+    @Get('users/:id/inventory')
+    @HttpCode(HttpStatus.OK)
+    async getUserInventory(@Param('id') userId: string) {
+        return this.adminService.getUserInventory(userId);
+    }
+
+    // Update user inventory
+    @Post('users/:id/inventory')
+    @HttpCode(HttpStatus.OK)
+    async updateUserInventory(
+        @Param('id') userId: string,
+        @Body() dto: UpdateInventoryDto
+    ) {
+        return this.adminService.updateUserInventory(
+            userId,
+            dto.itemType,
+            dto.amount,
+            dto.action
+        );
     }
 }

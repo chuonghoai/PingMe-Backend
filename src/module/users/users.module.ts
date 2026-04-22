@@ -12,10 +12,11 @@ import { ConversationModule } from '../conversations/conversations.module';
 import { FriendsModule } from '../friends/friends.module';
 import { MomentsModule } from '../moments/moments.module';
 import { Friend } from '../friends/entities/friend.entity';
+import { UserInventory } from '../challenges/entities/user-inventory.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Friend]),
+    TypeOrmModule.forFeature([User, Friend, UserInventory]),
     forwardRef(() => WebsocketsModule),
     ConversationModule,
     forwardRef(() => FriendsModule),

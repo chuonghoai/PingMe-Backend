@@ -7,6 +7,11 @@ import { ConversationParticipantRepository } from "../conversations/repository/c
 import { CustomException } from "src/core/exceptions/custom.exception";
 import { ENV_VARS } from "src/constants/env.constants";
 import { ChangePasswordDto } from "./dto/change-password-request.dto";
+import { EItemType, ITEM_DEFINITIONS } from "../challenges/entities/challenge-definition";
+import { EUpdateInventoryAction } from "./dto/update-inventory.dto";
+import { Repository } from "typeorm";
+import { UserInventory } from "../challenges/entities/user-inventory.entity";
+import { InjectRepository } from "@nestjs/typeorm";
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -15,6 +20,8 @@ export class AdminService implements OnModuleInit {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly participantRepo: ConversationParticipantRepository,
+        @InjectRepository(UserInventory)
+        private readonly inventoryRepo: Repository<UserInventory>,
     ) { }
 
     async onModuleInit() {
@@ -118,5 +125,66 @@ export class AdminService implements OnModuleInit {
         await this.userRepository.save(user);
 
         return new ApiResponse(true, 'Đổi mật khẩu thành công', null);
+    }
+
+    // Get user inventory by userId
+    async getUserInventory(userId: string): Promise<ApiResponse<any>> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Người dùng không tồn tại');
+        }
+
+        const items = await this.inventoryRepo.find({ where: { userId } });
+        
+        const result = items.map(i => {
+            const def = ITEM_DEFINITIONS[i.itemType];
+            return {
+                id: i.id,
+                itemType: i.itemType,
+                name: def?.name,
+                emoji: def?.emoji,
+                quantity: i.quantity,
+            };
+        });
+
+        return new ApiResponse(true, 'Lấy kho đồ người dùng thành công', result);
+    }
+
+    // Update user inventory
+    async updateUserInventory(userId: string, itemType: EItemType, amount: number, action: EUpdateInventoryAction): Promise<ApiResponse<any>> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new CustomException(HttpStatus.NOT_FOUND, 'USER_NOT_FOUND', 'Người dùng không tồn tại');
+        }
+
+        const def = ITEM_DEFINITIONS[itemType];
+        if (!def) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_ITEM', 'Vật phẩm không hợp lệ');
+        }
+
+        let inv = await this.inventoryRepo.findOne({ where: { userId, itemType } });
+        let newQuantity = 0;
+
+        if (action === EUpdateInventoryAction.SET) {
+            newQuantity = amount;
+        } else if (action === EUpdateInventoryAction.ADD) {
+            newQuantity = (inv ? inv.quantity : 0) + amount;
+        }
+
+        if (newQuantity <= 0) {
+            if (inv) {
+                await this.inventoryRepo.remove(inv);
+            }
+        } else {
+            if (inv) {
+                inv.quantity = newQuantity;
+                await this.inventoryRepo.save(inv);
+            } else {
+                inv = this.inventoryRepo.create({ userId, itemType, quantity: newQuantity });
+                await this.inventoryRepo.save(inv);
+            }
+        }
+
+        return new ApiResponse(true, 'Cập nhật kho đồ thành công', null);
     }
 }
