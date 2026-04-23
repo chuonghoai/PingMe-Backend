@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { IntimacyRelationship } from './intimacy-relationship.entity';
 
 export enum EIntimacyEventType {
   CHAT = 'CHAT',
@@ -17,6 +18,10 @@ export class IntimacyEvent {
   @Column()
   @Index()
   relationshipId: string;
+
+  @ManyToOne(() => IntimacyRelationship, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'relationshipId' })
+  relationship: IntimacyRelationship;
 
   @Column({ type: 'enum', enum: EIntimacyEventType })
   eventType: EIntimacyEventType;
