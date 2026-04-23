@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Unique, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('intimacy_relationships')
 @Unique(['user1Id', 'user2Id']) // Ensure only one relationship per pair
@@ -9,8 +10,16 @@ export class IntimacyRelationship {
   @Column()
   user1Id: string; // To avoid duplicates, user1Id should always be less than user2Id
 
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user1Id' })
+  user1: User;
+
   @Column()
   user2Id: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user2Id' })
+  user2: User;
 
   @Column({ type: 'int', default: 0 })
   totalIntimacyScore: number;
