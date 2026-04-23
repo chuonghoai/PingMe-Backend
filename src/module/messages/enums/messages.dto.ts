@@ -4,4 +4,6 @@ export enum EMessageType {
   VIDEO = 'VIDEO',
   AUDIO = 'AUDIO',
   SYSTEM = 'SYSTEM',
+  STICKER = 'STICKER',
+  CALL = 'CALL',
 }

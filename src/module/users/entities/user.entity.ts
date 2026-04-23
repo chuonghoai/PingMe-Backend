@@ -59,14 +59,21 @@ export class User {
   @Column({ nullable: true })
   locationUpdatedAt: Date;
 
+
   @Column({ nullable: true, length: 255 })
   statusMessage: string;
+
+  @Column({ nullable: true, length: 500 })
+  bio: string;
 
   @Column({ type: 'enum', enum: EUserActivityType, default: EUserActivityType.OFFLINE })
   activityType: EUserActivityType;
 
   @Column({ type: 'int', nullable: true })
   battery: number;
+
+  @Column({ default: false })
+  isCharging: boolean;
 
   @Column({ type: 'float', nullable: true })
   speed: number;
@@ -80,9 +87,4 @@ export class User {
   @Column({ nullable: true })
   checkInLocation: string;
 
-  @Column({ type: 'int', default: 1 })
-  level: number;
-
-  @Column({ type: 'int', default: 0 })
-  currentExp: number;
 }

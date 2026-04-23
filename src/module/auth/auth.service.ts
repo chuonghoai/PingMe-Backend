@@ -1,11 +1,10 @@
-import { EmailService } from './../email/email.service';
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
- 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
+import { EmailService } from './../email/email.service';
 import { Injectable, HttpStatus, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -42,9 +41,9 @@ export class AuthService {
 
     // Find user by email
     const user = await this.userRepository.createQueryBuilder('user')
-                                          .where('user.email = :email', { email })
-                                          .addSelect('user.password')
-                                          .getOne();
+      .where('user.email = :email', { email })
+      .addSelect('user.password')
+      .getOne();
 
     if (!user) {
       throw new CustomException(
@@ -136,8 +135,8 @@ export class AuthService {
       });
 
       // Check refresh token
-      const tokenRecord = await this.userTokenRepository.findOne({ 
-        where: { refreshToken: refreshToken } 
+      const tokenRecord = await this.userTokenRepository.findOne({
+        where: { refreshToken: refreshToken }
       });
       if (!tokenRecord || tokenRecord.isRevoked) {
         throw new CustomException(HttpStatus.UNAUTHORIZED, 'TOKEN_REVOKED', 'Phiên đăng nhập không hợp lệ');
@@ -202,7 +201,7 @@ export class AuthService {
       throw new CustomException(HttpStatus.CONFLICT, 'EMAIL_EXISTS', 'Email đã được sử dụng');
     }
 
-    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    const latestOtp = await this.emailRepository.findLatestOtp(email);
     if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
       throw new CustomException(
         HttpStatus.BAD_REQUEST,
@@ -222,10 +221,10 @@ export class AuthService {
 
     latestOtp.isUsed = true;
     await this.emailRepository.save(latestOtp);
-    
+
     console.log('Dang ky thanh cong');
     return new ApiResponse(
-      true, 
+      true,
       'Đăng ký thành công.',
       {
         userId: newUser.id,
@@ -257,8 +256,40 @@ export class AuthService {
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
-    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong')
-    return new ApiResponse(true, 'Cập nhật thông tin thành công', null);
+
+    // Generate Tokens to auto-login
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const accessToken = this.jwtService.sign(payload);
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>(ENV_VARS.JWT_REFRESH_SECRET),
+      expiresIn: '360d',
+    });
+
+    // Save Refresh token in db
+    const expiresAt = new Date(Date.now() + 360 * 24 * 60 * 60 * 1000);
+
+    await this.userTokenRepository.save({
+      userId: user.id,
+      refreshToken: refreshToken,
+      expiresAt: expiresAt,
+      isRevoked: false,
+    });
+
+    console.log('Cap nhat thong tin cho email: ' + addProfileDto.email + ' thanh cong + auto login');
+    return new ApiResponse(true, 'Cập nhật thông tin thành công', {
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user.id,
+        email: user.email,
+        status: user.status,
+      },
+    });
   }
 
   // Logout
@@ -306,7 +337,7 @@ export class AuthService {
     }
 
     // Check OTP
-    const latestOtp = await this.emailRepository.findLatestOtpByEmail(email);
+    const latestOtp = await this.emailRepository.findLatestOtp(email);
     if (!latestOtp || latestOtp.otp !== otp || latestOtp.isUsed || new Date() > latestOtp.expirationTime) {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_OTP', 'Mã OTP không hợp lệ hoặc đã hết hạn');
     }

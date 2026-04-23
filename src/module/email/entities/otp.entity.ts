@@ -1,5 +1,5 @@
-/* eslint-disable prettier/prettier */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { OtpPurpose } from '../enums/otp-purpose.enum';
 
 @Entity('otps')
 export class Otp {
@@ -11,6 +11,9 @@ export class Otp {
 
   @Column()
   otp: string;
+
+  @Column({ type: 'enum', enum: OtpPurpose, nullable: true })
+  purpose: OtpPurpose;
 
   @Column({ type: 'timestamp' })
   expirationTime: Date;

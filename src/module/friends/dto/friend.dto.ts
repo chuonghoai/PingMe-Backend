@@ -1,10 +1,10 @@
 /* eslint-disable prettier/prettier */
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { FriendPopupStatus, FriendRequestAction, FriendStatus } from '../enums/friend-status.enum';
 
 export class SendFriendRequestDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   senderId: string;
 
   @IsString()
@@ -73,6 +73,7 @@ export interface FriendRequestItemDto {
 
 export interface FriendOnMapDto {
   userId: string;
+  fullName: string;
   avatarUrl: string;
   latitude: number;
   longitude: number;
@@ -87,6 +88,10 @@ export interface FriendMapPopupDto {
     avatarUrl: string;
     onlineStatus: string;
     lastActive: string;
+    mutualFriends: number;
+    bio?: string;
+    gender?: string;
+    dob?: Date | string;
   };
   relationship: {
     status: FriendPopupStatus | string;
@@ -104,6 +109,7 @@ export interface FriendMapPopupDto {
     statusMessage: string;
     activityType: string;
     battery: number | null;
+    isCharging: boolean;
     speed: number;
   };
   actions: {
@@ -125,6 +131,9 @@ export interface FriendMapPopupDto {
       currentExp: number;
       nextLevelExp: number;
       progressPercent: number;
+      currentStreak?: number;
+      longestStreak?: number;
+      aura?: string;
     };
   };
 }

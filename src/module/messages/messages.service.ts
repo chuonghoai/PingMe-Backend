@@ -11,6 +11,8 @@ import { ConversationParticipantRepository } from '../conversations/repository/c
 import { CustomException } from '../../core/exceptions/custom.exception';
 import { EMessageType } from './enums/messages.dto';
 import { ApiResponse } from 'src/core/dto/ApiResponse.dto';
+import { IntimacyService } from '../intimacy/intimacy.service';
+import { EIntimacyEventType } from '../intimacy/entities/intimacy-event.entity';
 
 @Injectable()
 export class MessagesService {
@@ -19,6 +21,7 @@ export class MessagesService {
     private conversationRepo: ConversationRepository,
     private participantRepo: ConversationParticipantRepository,
     private dataSource: DataSource,
+    private intimacyService: IntimacyService,
   ) { }
 
   // Save new message
@@ -67,6 +70,20 @@ export class MessagesService {
       snippet = 'Đã gửi 1 video';
     } else if (type === EMessageType.AUDIO) {
       snippet = 'Đã gửi 1 tin nhắn thoại';
+    } else if (type === EMessageType.STICKER) {
+      snippet = 'Đã gửi 1 sticker';
+    } else if (type === EMessageType.CALL) {
+      snippet = 'Cuộc gọi';
+      try {
+        if (content) {
+          const callData = JSON.parse(content);
+          if (callData.status === 'MISSED') {
+            snippet = callData.callType === 'VIDEO' ? 'Cuộc gọi video nhỡ' : 'Cuộc gọi thoại nhỡ';
+          } else {
+            snippet = callData.callType === 'VIDEO' ? 'Cuộc gọi video' : 'Cuộc gọi thoại';
+          }
+        }
+      } catch (e) {}
     } else {
       snippet = 'Đã gửi tin nhắn';
     }
@@ -139,6 +156,16 @@ export class MessagesService {
         }
       });
 
+      // TRIGGER INTIMACY CHAT EVENT (Background)
+      if (updatedConversation && updatedConversation.participants.length === 2 && type !== EMessageType.SYSTEM) {
+        const receiverId = updatedConversation.participants.find(p => p.userId !== senderId)?.userId;
+        if (receiverId) {
+          const eventType = type === EMessageType.CALL ? EIntimacyEventType.PROXIMITY /* Call is grouped as high proximity/location interaction temporarily, or just Chat */ : EIntimacyEventType.CHAT;
+          // Fire and forget
+          this.intimacyService.processInteraction(senderId, receiverId, type === EMessageType.CALL ? EIntimacyEventType.LOCATION : EIntimacyEventType.CHAT).catch(console.error);
+        }
+      }
+
       return {
         message: fullMessage,
         conversation: updatedConversation,
@@ -154,6 +181,38 @@ export class MessagesService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // Save system message (no sender, type=SYSTEM)
+  async saveSystemMessage(conversationId: string, content: string): Promise<any> {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      throw new CustomException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Không tìm thấy hội thoại',
+      );
+    }
+
+    const snippet = content.length > 50 ? content.substring(0, 50) + '...' : content;
+
+    const newMessage = this.messageRepo.create({
+      conversationId,
+      senderId: null as any,
+      content,
+      type: EMessageType.SYSTEM,
+    });
+    const savedMessage = await this.messageRepo.save(newMessage);
+
+    await this.conversationRepo.update(conversationId, {
+      lastMessageSnippet: snippet,
+      lastMessageAt: new Date(),
+    });
+
+    return savedMessage;
   }
 
   // Revoke message
@@ -306,7 +365,7 @@ export class MessagesService {
     return new ApiResponse(true, 'Lấy ngữ cảnh tin nhắn thành công', contextMessages);
   }
 
-  // Get meida in conversation
+  // Get media in conversation
   async getConversationMedia(
     userId: string,
     conversationId: string,
@@ -356,5 +415,64 @@ export class MessagesService {
         currentPage: page,
       },
     });
+  }
+
+  // Search messages in a specific conversation
+  async searchMessagesInConversation(
+    userId: string,
+    conversationId: string,
+    keyword: string,
+  ): Promise<ApiResponse<any>> {
+    const participant = await this.participantRepo.findOne({
+      where: { userId, conversationId },
+    });
+
+    if (!participant) {
+      throw new CustomException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Bạn không có quyền tìm kiếm trong hội thoại này',
+      );
+    }
+
+    if (!keyword || keyword.trim() === '') {
+      return new ApiResponse(true, 'Kết quả tìm kiếm', []);
+    }
+
+    const searchTerm = `%${keyword.toLowerCase()}%`;
+
+    const whereCondition: any = {
+      conversationId,
+      type: EMessageType.TEXT,
+      isRevoked: false,
+    };
+
+    if (participant.clearedAt) {
+      whereCondition.createdAt = MoreThan(participant.clearedAt);
+    }
+
+    // Custom query to support ILIKE / LOWER LIKE
+    const messages = await this.messageRepo
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.sender', 'sender')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .andWhere('message.type = :type', { type: EMessageType.TEXT })
+      .andWhere('message.isRevoked = :isRevoked', { isRevoked: false })
+      .andWhere('LOWER(message.content) LIKE :searchTerm', { searchTerm })
+      .andWhere(participant.clearedAt ? 'message.createdAt > :clearedAt' : '1=1', { clearedAt: participant.clearedAt })
+      .orderBy('message.createdAt', 'DESC')
+      .take(50)
+      .getMany();
+
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      createdAt: msg.createdAt,
+      senderId: msg.senderId,
+      senderName: msg.sender?.fullname,
+      senderAvatar: msg.sender?.avatarUrl,
+    }));
+
+    return new ApiResponse(true, 'Kết quả tìm kiếm', formattedMessages);
   }
 }

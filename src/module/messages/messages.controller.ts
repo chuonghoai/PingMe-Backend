@@ -18,7 +18,7 @@ import { Throttle } from '@nestjs/throttler';
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) { }
+  constructor(private readonly messagesService: MessagesService) {}
 
   @Get(':conversationId')
   @HttpCode(HttpStatus.OK)
@@ -73,6 +73,22 @@ export class MessagesController {
       conversationId,
       page,
       limit,
+    );
+  }
+
+  @Get(':conversationId/search')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 1000 } })
+  async searchMessages(
+    @Request() req: any,
+    @Param('conversationId') conversationId: string,
+    @Query('q') q: string,
+  ) {
+    const userId = req.user.userId;
+    return this.messagesService.searchMessagesInConversation(
+      userId,
+      conversationId,
+      q,
     );
   }
 }
