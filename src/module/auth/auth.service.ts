@@ -21,6 +21,7 @@ import { EUserGender, EUserStatus } from '../users/enums/user.enum';
 import { UserRepository } from '../users/users.repository';
 import { UserToken } from './entities/user-token.entity';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -32,6 +33,7 @@ export class AuthService {
     private emailRepository: EmailRepository,
     @InjectRepository(UserToken) private userTokenRepository: Repository<UserToken>,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // LOGIN
@@ -256,6 +258,9 @@ export class AuthService {
     user.status = EUserStatus.ACTIVE;
 
     await this.userRepository.save(user);
+
+    // Send welcome notification for first login
+    await this.notificationsService.createWelcomeNotification(user.id, user.fullname);
 
     // Generate Tokens to auto-login
     const payload = {

@@ -467,6 +467,7 @@ export class FriendsService {
         bio: targetUser.bio || '',
         gender: targetUser.gender,
         dob: targetUser.dob,
+        phone: targetUser.phone,
       },
       relationship: {
         status: relStatus,

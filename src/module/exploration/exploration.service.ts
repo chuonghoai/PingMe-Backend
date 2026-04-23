@@ -19,6 +19,9 @@ export class ExplorationService {
   ) {}
 
   async syncPoints(userId: string, points: { lat: number; lng: number }[]) {
+    if (!userId) {
+      return new ApiResponse(false, 'User ID is required', null);
+    }
     if (!points || points.length === 0) {
       return new ApiResponse(true, 'No points to sync', null);
     }

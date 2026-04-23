@@ -393,4 +393,21 @@ export class NotificationsService {
       console.error('[Notification] Lỗi khi tạo thông báo sự kiện toàn server:', error);
     }
   }
+
+  // System - Welcome Notification
+  async createWelcomeNotification(userId: string, userName: string) {
+    const message = `Chào mừng ${userName} đến với PingMe! Khám phá và kết nối với bạn bè ngay hôm nay.`;
+
+    const notification = this.notificationRepo.create({
+      userId: userId,
+      type: ENotificationType.SYSTEM,
+      subType: ENotificationSubType.WELCOME,
+      title: 'Chào mừng bạn mới',
+      message: message,
+      metadata: {},
+      isRead: false,
+    });
+
+    return await this.notificationRepo.save(notification);
+  }
 }
