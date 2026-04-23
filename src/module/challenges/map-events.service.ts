@@ -99,6 +99,7 @@ export class MapEventsService {
         }
 
         const distance = this.calculateDistance(event.latitude, event.longitude, userLat, userLng);
+        // mathematical unit: Kilometer
         const requiredDistance = 20;
         if (distance > requiredDistance) {
             console.log('Failed to check in:', {
