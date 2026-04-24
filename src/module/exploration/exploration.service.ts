@@ -27,7 +27,6 @@ export class ExplorationService {
     }
 
     try {
-      // 1. Process H3 Hexagons (Resolution 10)
       const resolution = 10;
       const hexSet = new Set<string>();
       
@@ -40,11 +39,9 @@ export class ExplorationService {
         }
       }
 
-      // Upsert into ExploredArea avoiding duplicates
       const hexArray = Array.from(hexSet);
       if (hexArray.length > 0) {
         const values = hexArray.map(hexId => ({ userId, hexId }));
-        // Insert Ignore ensures that duplicate hexIds for the same user are ignored
         await this.exploredAreaRepo
           .createQueryBuilder()
           .insert()
@@ -54,8 +51,7 @@ export class ExplorationService {
           .execute();
       }
 
-      // 2. Simplify Points and append to RouteTimeline
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
       
       let route = await this.routeTimelineRepo.findOne({
         where: { userId, date: today }
@@ -68,13 +64,10 @@ export class ExplorationService {
       }
       const combinedPath = [...existingPath, ...validPoints];
 
-      // Convert combined path to {x, y} for simplify
       const pointsXY = combinedPath.map(p => ({ x: p.lng, y: p.lat }));
       
-      // Simplify with tolerance 0.0001 (approx ~11 meters), high quality true
       const simplifiedXY = simplify(pointsXY, 0.0001, true);
       
-      // Convert back to {lat, lng}
       const simplifiedPath = simplifiedXY.map(p => ({ lat: p.y, lng: p.x }));
 
       if (route) {
@@ -108,7 +101,6 @@ export class ExplorationService {
 
     const hexIds = explored.map(e => e.hexId);
 
-    // Get today's route
     const today = new Date().toISOString().split('T')[0];
     const todaysRoute = await this.routeTimelineRepo.findOne({
       where: { userId, date: today },
@@ -120,11 +112,9 @@ export class ExplorationService {
       path = typeof todaysRoute.path === 'string' ? JSON.parse(todaysRoute.path) : todaysRoute.path;
     }
 
-    // Vietnam scope static resolution 10 total hexes approx 22,011,100
     const totalVNHexes = 22011100;
     const progressPercent = ((hexIds.length / totalVNHexes) * 100).toFixed(6);
 
-    // Map Hexagons to Geometries exactly because React Native frontend can't run h3-js WebAssembly
     const boundaries = hexIds.map(hexId => {
       const boundaryCoords = h3.cellToBoundary(hexId);
       return {

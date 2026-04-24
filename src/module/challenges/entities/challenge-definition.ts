@@ -41,8 +41,7 @@ export interface ChallengeDefinition {
   targetProgress: number;
   rewardItem: EItemType;
   rewardQuantity: number;
-  /** Which intimacy event type triggers progress for this challenge */
-  triggerEvent: string; // Maps to EIntimacyEventType or custom
+  triggerEvent: string;
 }
 
 export const CHALLENGE_DEFINITIONS: Record<EChallengeType, ChallengeDefinition> = {
@@ -124,7 +123,7 @@ export interface ItemDefinition {
   name: string;
   emoji: string;
   category: EItemCategory;
-  intimacyBonus: number; // How much intimacy when gifted (0 for SPECIAL items)
+  intimacyBonus: number;
   description: string;
 }
 

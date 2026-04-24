@@ -210,7 +210,6 @@ export class ConversationService {
     const lowerKeyword = keyword.toLowerCase();
     const searchTerm = `%${lowerKeyword}%`;
 
-    // 1. Get ALL user's visible conversations with participants loaded
     const allParticipants = await this.participantRepo.createQueryBuilder('cp')
       .innerJoinAndSelect('cp.conversation', 'conv')
       .leftJoinAndSelect('conv.participants', 'other_cp')
@@ -220,7 +219,6 @@ export class ConversationService {
       .orderBy('conv.lastMessageAt', 'DESC')
       .getMany();
 
-    // Filter in memory by keyword matching on friend name / group name
     const formattedConversations: any[] = [];
     const addedConvIds = new Set();
 
@@ -230,7 +228,6 @@ export class ConversationService {
       const conv = p.conversation;
       if (!conv || !conv.participants) continue;
 
-      // Check if any OTHER participant's name matches the keyword
       const hasOtherUserMatch = conv.participants.some(op =>
         op.userId !== userId &&
         op.user &&
@@ -238,7 +235,6 @@ export class ConversationService {
          (op.user.username && op.user.username.toLowerCase().includes(lowerKeyword)))
       );
 
-      // Check group name match
       const hasGroupNameMatch = conv.type === EConversationType.GROUP && conv.name && conv.name.toLowerCase().includes(lowerKeyword);
 
       if (!hasOtherUserMatch && !hasGroupNameMatch) continue;
@@ -265,7 +261,6 @@ export class ConversationService {
       });
     }
 
-    // 2. Search message contents within user's active conversations
     const conversationIds = allParticipants.map(p => p.conversationId);
 
     let messages: any[] = [];
@@ -292,8 +287,6 @@ export class ConversationService {
       }
     }
 
-    // Build display info for each matched message
-    // Cache other-participant lookups by conversationId to avoid N+1 queries
     const otherParticipantCache = new Map<string, any>();
     for (const p of allParticipants) {
       if (otherParticipantCache.has(p.conversationId)) continue;

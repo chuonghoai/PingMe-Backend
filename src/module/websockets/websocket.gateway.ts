@@ -275,17 +275,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // ── Proximity Intimacy Logic ──
         const friendInfo = await this.usersService.findById(friendId);
         if (friendInfo?.lat && friendInfo?.lng) {
-          const R = 6371; // Earth radius in km
+          const R = 6371;
           const dLat = (friendInfo.lat - payload.lat) * (Math.PI / 180);
           const dLon = (friendInfo.lng - payload.lng) * (Math.PI / 180);
-          const a = 
+          const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(payload.lat * (Math.PI / 180)) * Math.cos(friendInfo.lat * (Math.PI / 180)) * 
-            Math.sin(dLon / 2) * Math.sin(dLon / 2); 
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
-          const distanceKM = R * c; // Distance in km
-          
-          if (distanceKM <= 0.05) { // 50 meters
+            Math.cos(payload.lat * (Math.PI / 180)) * Math.cos(friendInfo.lat * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const distanceKM = R * c;
+
+          if (distanceKM <= 0.05) {
             this.intimacyService.processInteraction(userId, friendId, EIntimacyEventType.PROXIMITY).catch(console.error);
           }
 
@@ -294,7 +294,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const pairKey = [userId, friendId].sort().join('_');
             const now = Date.now();
             const lastMeetup = this.meetupCooldowns.get(pairKey) || 0;
-            
+
             // Cooldown: 3 hours = 3 * 60 * 60 * 1000 = 10800000 ms
             if (now - lastMeetup > 10800000) {
               this.meetupCooldowns.set(pairKey, now);
@@ -302,7 +302,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
               // 1. Emit to the two users involved for the Ping Modal
               const u1Socket = this.websocketsService.getSocketId(userId);
               const u2Socket = this.websocketsService.getSocketId(friendId);
-              
+
               const midLat = (payload.lat + friendInfo.lat) / 2;
               const midLng = (payload.lng + friendInfo.lng) / 2;
 

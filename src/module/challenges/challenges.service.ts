@@ -32,9 +32,9 @@ export class ChallengesService {
     private readonly websocketsService: WebsocketsService,
     @Inject(forwardRef(() => IntimacyService))
     private readonly intimacyService: IntimacyService,
-  ) {}
+  ) { }
 
-  // ── Initialize challenges for a user (called on login or daily reset) ──
+  // ── Initialize challenges for a user ──
   async initChallengesForUser(userId: string): Promise<void> {
     const allTypes = Object.values(EChallengeType);
 
@@ -61,7 +61,6 @@ export class ChallengesService {
   // ── Update challenge progress based on event ──
   async updateProgress(userId: string, triggerEvent: string, incrementBy: number = 1): Promise<void> {
     try {
-      // Find all challenges matching this trigger event that are not yet claimed
       const challenges = await this.challengeRepo.find({
         where: { userId, isClaimed: false },
       });
@@ -71,7 +70,6 @@ export class ChallengesService {
         if (!def || def.triggerEvent !== triggerEvent) continue;
         if (challenge.isCompleted) continue;
 
-        // For STREAK type, set progress to the value rather than increment
         if (triggerEvent === 'STREAK') {
           challenge.currentProgress = Math.max(challenge.currentProgress, incrementBy);
         } else if (triggerEvent === 'LEVEL') {
@@ -84,7 +82,6 @@ export class ChallengesService {
           challenge.isCompleted = true;
           challenge.completedAt = new Date();
 
-          // Notify user
           this.websocketsService.emitToUsers([userId], 'challenge_completed', {
             challengeType: challenge.challengeType,
             name: def.name,
@@ -129,7 +126,6 @@ export class ChallengesService {
 
     const def = CHALLENGE_DEFINITIONS[challenge.challengeType];
 
-    // Add item to inventory
     await this.addToInventory(userId, def.rewardItem, def.rewardQuantity);
 
     challenge.isClaimed = true;
@@ -163,7 +159,6 @@ export class ChallengesService {
 
   // ── Get active challenges for user ──
   async getActiveChallenges(userId: string) {
-    // Ensure challenges exist
     await this.initChallengesForUser(userId);
 
     const challenges = await this.challengeRepo.find({
@@ -224,7 +219,6 @@ export class ChallengesService {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_ITEM', 'Vật phẩm không hợp lệ để tặng');
     }
 
-    // Check inventory
     const inv = await this.inventoryRepo.findOne({
       where: { userId: senderId, itemType },
     });
@@ -233,17 +227,13 @@ export class ChallengesService {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INSUFFICIENT_ITEMS', 'Bạn không có vật phẩm này trong kho');
     }
 
-    // Deduct from inventory
     inv.quantity -= 1;
     await this.inventoryRepo.save(inv);
 
-    // Process intimacy points
     const actualGained = await this.intimacyService.processInteraction(senderId, receiverId, EIntimacyEventType.GIFT, def.intimacyBonus);
 
-    // Update GIFT_SENT challenge
     await this.updateProgress(senderId, 'GIFT_SENT');
 
-    // Emit WebSocket event
     this.websocketsService.emitToUsers([senderId, receiverId], 'receive_gift', {
       senderId,
       receiverId,
@@ -269,7 +259,6 @@ export class ChallengesService {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INVALID_ITEM', 'Vật phẩm không hợp lệ');
     }
 
-    // Check inventory
     const inv = await this.inventoryRepo.findOne({
       where: { userId, itemType },
     });
@@ -278,17 +267,13 @@ export class ChallengesService {
       throw new CustomException(HttpStatus.BAD_REQUEST, 'INSUFFICIENT_ITEMS', 'Bạn không có vật phẩm này');
     }
 
-    // Deduct
     inv.quantity -= 1;
     await this.inventoryRepo.save(inv);
 
-    // Create active effect
     let expiresAt: Date;
     if (itemType === EItemType.STREAK_SHIELD) {
-      // Shield lasts 48 hours (covers missing one day)
       expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
     } else if (itemType === EItemType.EXP_BOOST) {
-      // Boost lasts 1 hour
       expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     } else {
       expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -302,7 +287,6 @@ export class ChallengesService {
     });
     await this.effectRepo.save(effect);
 
-    // Notify user
     this.websocketsService.emitToUsers([userId], 'effect_activated', {
       effectType: itemType,
       itemName: def.name,
@@ -333,7 +317,6 @@ export class ChallengesService {
 
   // ── Check & apply streak shield ──
   async checkAndApplyStreakShield(user1Id: string, user2Id: string): Promise<boolean> {
-    // Check if either user has an active streak shield
     const shield1 = await this.effectRepo.findOne({
       where: {
         userId: user1Id,
@@ -351,7 +334,6 @@ export class ChallengesService {
     });
 
     if (shield1) {
-      // Consume the shield
       await this.effectRepo.remove(shield1);
       this.websocketsService.emitToUsers([user1Id, user2Id], 'streak_shield_used', {
         protectedBy: user1Id,

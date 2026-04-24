@@ -161,7 +161,6 @@ export class MessagesService {
         const receiverId = updatedConversation.participants.find(p => p.userId !== senderId)?.userId;
         if (receiverId) {
           const eventType = type === EMessageType.CALL ? EIntimacyEventType.PROXIMITY /* Call is grouped as high proximity/location interaction temporarily, or just Chat */ : EIntimacyEventType.CHAT;
-          // Fire and forget
           this.intimacyService.processInteraction(senderId, receiverId, type === EMessageType.CALL ? EIntimacyEventType.LOCATION : EIntimacyEventType.CHAT).catch(console.error);
         }
       }
@@ -308,11 +307,9 @@ export class MessagesService {
   }
 
   async getMessageContext(userId: string, conversationId: string, messageId: string): Promise<ApiResponse<any>> {
-    // 1. Kiểm tra quyền
     const participant = await this.participantRepo.findOne({ where: { userId, conversationId } });
     if (!participant) throw new CustomException(HttpStatus.FORBIDDEN, 'FORBIDDEN', 'Không có quyền truy cập');
 
-    // 2. Lấy tin nhắn đích
     const targetMsgWhere: any = { id: messageId, conversationId };
     if (participant.clearedAt) {
       targetMsgWhere.createdAt = MoreThan(participant.clearedAt);
@@ -329,7 +326,6 @@ export class MessagesService {
 
     if (!targetMsg) throw new CustomException(HttpStatus.NOT_FOUND, 'NOT_FOUND', 'Tin nhắn không tồn tại');
 
-    // 3. Lấy 15 tin nhắn CŨ HƠN tin nhắn đích (Cuộn lên trên)
     const olderWhere: any = { conversationId, createdAt: LessThan(targetMsg.createdAt) };
     if (participant.clearedAt) {
       olderWhere.createdAt = And(
@@ -340,26 +336,24 @@ export class MessagesService {
 
     const olderMessages = await this.messageRepo.find({
       where: olderWhere,
-      order: { createdAt: 'DESC' }, // Lấy từ đích giật lùi về quá khứ
+      order: { createdAt: 'DESC' },
       take: 15,
       relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
       select: { sender: { id: true, fullname: true, avatarUrl: true } }
     });
 
-    // 4. Lấy 15 tin nhắn MỚI HƠN tin nhắn đích (Cuộn xuống dưới)
     const newerMessages = await this.messageRepo.find({
       where: { conversationId, createdAt: MoreThan(targetMsg.createdAt) },
-      order: { createdAt: 'ASC' }, // Lấy từ đích tiến về hiện tại
+      order: { createdAt: 'ASC' },
       take: 15,
       relations: ['sender', 'media', 'replyTo', 'replyTo.sender'],
       select: { sender: { id: true, fullname: true, avatarUrl: true } }
     });
 
-    // 5. Gộp lại thành 1 mảng duy nhất, đảo chiều newer để khớp thứ tự DESC (mới nhất nằm đầu mảng cho Frontend dễ dùng FlatList inverted)
     const contextMessages = [
-      ...newerMessages.reverse(), // Tin mới hơn nằm trên cùng của mảng
-      targetMsg,                  // Đích nằm giữa
-      ...olderMessages            // Tin cũ nằm cuối
+      ...newerMessages.reverse(),
+      targetMsg,
+      ...olderMessages
     ];
 
     return new ApiResponse(true, 'Lấy ngữ cảnh tin nhắn thành công', contextMessages);
@@ -451,7 +445,6 @@ export class MessagesService {
       whereCondition.createdAt = MoreThan(participant.clearedAt);
     }
 
-    // Custom query to support ILIKE / LOWER LIKE
     const messages = await this.messageRepo
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.sender', 'sender')

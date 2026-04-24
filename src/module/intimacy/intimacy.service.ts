@@ -9,13 +9,12 @@ import { UsersService } from '../users/users.service';
 import { ChallengesService } from '../challenges/challenges.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
-const DAILY_CAP = 150; // Max basic points per day
+const DAILY_CAP = 150;
 
 @Injectable()
 export class IntimacyService {
   private readonly logger = new Logger(IntimacyService.name);
   
-  // Cooldown map cho sự kiện PROXIMITY (key: user1Id_user2Id, value: timestamp)
   private readonly proximityCooldowns: Map<string, number> = new Map();
 
   constructor(
@@ -70,7 +69,7 @@ export class IntimacyService {
       case EIntimacyEventType.LOCATION: return 5;
       case EIntimacyEventType.PROXIMITY: return 5;
       case EIntimacyEventType.CALL: return 5;
-      case EIntimacyEventType.GIFT: return 10; // Default if customScoreDelta not provided
+      case EIntimacyEventType.GIFT: return 10;
       default: return 0;
     }
   }
@@ -82,20 +81,16 @@ export class IntimacyService {
     try {
       const [user1Id, user2Id] = this.sortIds(u1, u2);
       
-      // -- COOLDOWN LOGIC FOR PROXIMITY (5 minutes) --
       if (eventType === EIntimacyEventType.PROXIMITY) {
         const key = `${user1Id}_${user2Id}`;
         const lastProximityAt = this.proximityCooldowns.get(key);
         const now = Date.now();
         if (lastProximityAt && (now - lastProximityAt < 5 * 60 * 1000)) {
-          // Chưa đủ 5 phút, bỏ qua không cộng điểm
           return 0;
         }
-        // Đủ 5 phút, cập nhật thời gian
         this.proximityCooldowns.set(key, now);
       }
 
-      // 1. Get or create relationship
       let rel = await this.relationshipRepo.findOne({ where: { user1Id, user2Id } });
       if (!rel) {
         rel = this.relationshipRepo.create({ user1Id, user2Id, totalIntimacyScore: 0, level: 1 });
@@ -103,29 +98,23 @@ export class IntimacyService {
       }
 
       const today = new Date();
-      const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateString = today.toISOString().split('T')[0];
 
-      // 2. Check Daily Stats & Limits
       let dailyStat = await this.dailyStatRepo.findOne({ where: { relationshipId: rel.id, dateString } });
       if (!dailyStat) {
         dailyStat = this.dailyStatRepo.create({ relationshipId: rel.id, dateString });
         await this.dailyStatRepo.save(dailyStat);
         
-        // This is the first interaction of the day, update streak!
         await this.updateStreak(rel, today);
       }
 
       if (eventType !== EIntimacyEventType.GIFT && dailyStat.pointsGained >= DAILY_CAP) {
-        // Cap reached, just log event with 0 score
         await this.logEvent(rel.id, eventType, 0);
         return 0;
       }
 
-      // 3. Compute score and multipliers
       let scoreDelta = customScoreDelta !== undefined ? customScoreDelta : this.getEventScore(eventType);
       
-      // ── EXP BOOST CHECK ──
-      // Check if either user has an active EXP boost
       const hasBoostU1 = await this.challengesService.hasActiveExpBoost(u1);
       const hasBoostU2 = await this.challengesService.hasActiveExpBoost(u2);
       if (hasBoostU1 || hasBoostU2) {
@@ -133,23 +122,19 @@ export class IntimacyService {
         this.logger.log(`EXP BOOST active! Score doubled: ${scoreDelta / 2} → ${scoreDelta}`);
       }
 
-      // Streak Multiplier logic
       if (rel.currentStreak >= 30) scoreDelta = Math.floor(scoreDelta * 1.5);
       else if (rel.currentStreak >= 7) scoreDelta = Math.floor(scoreDelta * 1.2);
       else if (rel.currentStreak >= 3) scoreDelta = Math.floor(scoreDelta * 1.1);
       
-      // Guarantee at least 1 point if it had a base score above 0
       if (scoreDelta === 0 && (customScoreDelta !== undefined ? customScoreDelta > 0 : this.getEventScore(eventType) > 0)) scoreDelta = 1;
 
       if (eventType !== EIntimacyEventType.GIFT) {
-        // Adjust if it pushes over cap
         if (dailyStat.pointsGained + scoreDelta > DAILY_CAP) {
           scoreDelta = DAILY_CAP - dailyStat.pointsGained;
         }
         dailyStat.pointsGained += scoreDelta;
       }
 
-      // 4. Update data
       if (eventType === EIntimacyEventType.CHAT) dailyStat.messagesCount += 1;
       
       rel.totalIntimacyScore += scoreDelta;
@@ -166,9 +151,7 @@ export class IntimacyService {
       await this.relationshipRepo.save(rel);
       await this.logEvent(rel.id, eventType, scoreDelta);
 
-      // ── UPDATE CHALLENGE PROGRESS ──
       try {
-        // Map eventType to challenge triggerEvent
         const triggerMap: Record<string, string> = {
           [EIntimacyEventType.CHAT]: 'CHAT',
           [EIntimacyEventType.CALL]: 'CALL',
@@ -177,17 +160,14 @@ export class IntimacyService {
         const trigger = triggerMap[eventType];
         if (trigger) {
           await this.challengesService.updateProgress(u1, trigger);
-          // Also update for the other user for PROXIMITY and CALL
           if (eventType === EIntimacyEventType.PROXIMITY || eventType === EIntimacyEventType.CALL) {
             await this.challengesService.updateProgress(u2, trigger);
           }
         }
 
-        // Update streak-based challenges for both users
         await this.challengesService.updateStreakChallenges(u1, rel.currentStreak);
         await this.challengesService.updateStreakChallenges(u2, rel.currentStreak);
 
-        // Update level-based challenges
         if (levelUp) {
           await this.challengesService.updateLevelChallenges(u1, rel.level);
           await this.challengesService.updateLevelChallenges(u2, rel.level);
@@ -198,14 +178,12 @@ export class IntimacyService {
 
       if (levelUp) {
         this.logger.log(`LEVEL UP! Relationship ${rel.id} reached level ${rel.level}`);
-        // Dispatch Level Up Event to WebSockets
         this.websocketsService.emitToUsers([user1Id, user2Id], 'intimacy_level_up', {
           friendId1: user1Id,
           friendId2: user2Id,
           newLevel: rel.level
         });
 
-        // ── Create Persistent Notifications ──
         const u1Entity = await this.usersService.findById(u1);
         const u2Entity = await this.usersService.findById(u2);
         if (u1Entity && u2Entity) {
@@ -248,17 +226,15 @@ export class IntimacyService {
         rel.longestStreak = rel.currentStreak;
       }
     } else if (diffDays > 1) {
-      // ── STREAK SHIELD CHECK ──
       const shieldUsed = await this.challengesService.checkAndApplyStreakShield(rel.user1Id, rel.user2Id);
       if (shieldUsed) {
-        // Shield protected the streak! Keep it and add 1
         rel.currentStreak += 1;
         if (rel.currentStreak > rel.longestStreak) {
           rel.longestStreak = rel.currentStreak;
         }
         this.logger.log(`Streak PROTECTED by shield for ${rel.user1Id} <-> ${rel.user2Id}`);
       } else {
-        rel.currentStreak = 1; // Streak broken
+        rel.currentStreak = 1;
       }
     }
   }
@@ -276,7 +252,6 @@ export class IntimacyService {
     
     let rel = await this.relationshipRepo.findOne({ where: { user1Id, user2Id } });
     if (!rel) {
-      // Default info if they have no interactions
       return {
         level: 1,
         totalIntimacyScore: 0,

@@ -14,7 +14,6 @@ export class ExploredArea {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  // H3 index resolution 10 strings are 15 chars long max
   @Column({ name: 'hex_id', length: 20 })
   hexId: string;
 

@@ -18,7 +18,7 @@ export class ActiveEffect {
   user: User;
 
   @Column({ nullable: true })
-  friendId: string; // Specific friend for streak shield, null for global effects
+  friendId: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'friendId' })

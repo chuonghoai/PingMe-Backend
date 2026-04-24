@@ -2,13 +2,13 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { User } from '../../users/entities/user.entity';
 
 @Entity('intimacy_relationships')
-@Unique(['user1Id', 'user2Id']) // Ensure only one relationship per pair
+@Unique(['user1Id', 'user2Id'])
 export class IntimacyRelationship {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
-  user1Id: string; // To avoid duplicates, user1Id should always be less than user2Id
+  user1Id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user1Id' })

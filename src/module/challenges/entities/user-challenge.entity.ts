@@ -18,7 +18,7 @@ export class UserChallenge {
   user: User;
 
   @Column({ nullable: true })
-  friendId: string; // For pair-specific challenges (optional)
+  friendId: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'friendId' })

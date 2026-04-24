@@ -166,16 +166,16 @@ export class FriendsService {
       createdAt: savedRequest.createdAt,
     };
 
-    // === TẠO NOTIFICATION + EMIT REALTIME ===
+    // Create notification + emit realtime
     try {
       const notification = await this.notificationsService.createFriendRequestNotification(
         sender.id,
         sender.fullname,
         sender.avatarUrl,
         targetUserId,
-        savedRequest.id, // Pass requestId
+        savedRequest.id,
       );
-      // Emit WS event cho người nhận
+      // Emit WS event
       this.websocketsService.emitToUsers(
         [targetUserId],
         'new_notification',
@@ -185,7 +185,7 @@ export class FriendsService {
           subType: 'FRIEND_REQUEST',
           title: 'Lời mời kết bạn',
           message: `${sender.fullname} đã gửi cho bạn lời mời kết bạn`,
-          metadata: { // Actor data should be inside metadata to match DB structure
+          metadata: {
             actorId: sender.id,
             actorName: sender.fullname,
             actorAvatarUrl: sender.avatarUrl,
@@ -227,12 +227,11 @@ export class FriendsService {
       friendRequest.status = FriendStatus.ACCEPTED;
       await this.friendRepo.save(friendRequest);
 
-      // === TỰ ĐỘNG TẠO CONVERSATION + SYSTEM MESSAGE ===
+      // Auto create conversation + system message
       let conversationId: string | null = null;
       try {
-        // Tạo hoặc tìm lại conversation 1-1 giữa 2 người
         const convResult = await this.conversationService.startConversation(
-          userId, // người chấp nhận
+          userId,
           {
             participantIds: [friendRequest.senderId],
             type: EConversationType.ONE_TO_ONE,
@@ -241,7 +240,6 @@ export class FriendsService {
         const conversation = convResult.data;
         conversationId = conversation?.id || null;
 
-        // Gửi system message
         if (conversationId) {
           await this.messagesService.saveSystemMessage(
             conversationId,
@@ -252,7 +250,7 @@ export class FriendsService {
         console.error('[Friends] Lỗi khi tạo conversation sau khi kết bạn:', err);
       }
 
-      // === EMIT WEBSOCKET EVENT cho cả 2 user ===
+      // EMIT WEBSOCKET EVENT cho cả 2 user
       try {
         const sender = await this.userRepo.findOne({ where: { id: friendRequest.senderId } });
         const accepter = await this.userRepo.findOne({ where: { id: userId } });
@@ -343,7 +341,6 @@ export class FriendsService {
 
   // Get list friend render on map
   async getFriendsOnMap(userId: string): Promise<ApiResponse<FriendOnMapDto[]>> {
-    // Query DB
     const friends = await this.friendRepo.find({
       where: [
         { senderId: userId, status: FriendStatus.ACCEPTED },
@@ -354,7 +351,6 @@ export class FriendsService {
 
     console.log(`[FriendsOnMap] User ${userId}: found ${friends.length} ACCEPTED friendships`);
 
-    // Query websocket
     const onlineUsers = await this.websocketsService.getOnlineUsers() || [];
     console.log(`[FriendsOnMap] Online users: [${onlineUsers.join(', ')}]`);
 
@@ -371,7 +367,7 @@ export class FriendsService {
 
       if (!hasCoords) continue;
       if (isHiding) continue;
-      if (!isOnline) continue; // Only show ONLINE friends on map
+      if (!isOnline) continue;
 
       friendsOnMap.push({
         userId: otherUser.id,
@@ -392,14 +388,12 @@ export class FriendsService {
     currentUserId: string, 
     targetUserId: string
   ): Promise<ApiResponse<FriendMapPopupDto>> {
-    // Get target and current user
     const targetUser = await this.userRepo.findOne({ where: { id: targetUserId } });
     if (!targetUser) {
       throw new NotFoundException('Người dùng không tồn tại');
     }
     const currentUser = await this.userRepo.findOne({ where: { id: currentUserId } });
 
-    // Friends relation ship
     const friendship = await this.friendRepo.findOne({
       where: [
         { senderId: currentUserId, targetUserId: targetUserId },

@@ -15,9 +15,8 @@ export class RouteTimeline {
   user: User;
 
   @Column({ type: 'date' })
-  date: string; // YYYY-MM-DD
+  date: string;
 
-  // Storing simple coordinate points as JSON array [ {lat, lng}, ... ]
   @Column({ type: 'json', nullable: true })
   path: any;
 
