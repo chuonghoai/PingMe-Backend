@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { EmailModule } from '../email/email.module';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { UserToken } from './entities/user-token.entity';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminAuthController } from './admin-auth.controller';
@@ -20,6 +21,7 @@ import { AdminAuthController } from './admin-auth.controller';
   imports: [
     TypeOrmModule.forFeature([User, UserToken]), 
     EmailModule,
+    NotificationsModule,
     forwardRef(() => UsersModule),
     PassportModule,
     JwtModule.registerAsync({

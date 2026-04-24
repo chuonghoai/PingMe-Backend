@@ -20,4 +20,5 @@ export enum ENotificationSubType {
   NUDGE_RECEIVED = 'NUDGE_RECEIVED',
   INTIMACY_LEVEL_UP = 'INTIMACY_LEVEL_UP',
   EVENT = 'EVENT',
+  WELCOME = 'WELCOME',
 }

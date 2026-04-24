@@ -92,6 +92,7 @@ export interface FriendMapPopupDto {
     bio?: string;
     gender?: string;
     dob?: Date | string;
+    phone?: string;
   };
   relationship: {
     status: FriendPopupStatus | string;
